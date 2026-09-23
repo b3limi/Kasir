@@ -5063,12 +5063,17 @@ function savePenjualan() {
     metodePembayaran = getActualCashMethod(selectedRadio.value);
   }
 
-  const selectedKetOpt = document.querySelector('input[name="p_ket_opt"]:checked');
-  if (!selectedKetOpt) {
-    return alert("Silahkan pilih Keterangan (Blangko, Cetak Undangan, atau Lain-lain) terlebih dahulu!");
-  }
+  // Set default Keterangan menjadi "PENJUALAN" untuk toko BLIMI
+  let ketPilihan = "PENJUALAN"; 
   
-  const ketPilihan = selectedKetOpt.value; 
+  // Jika yang masuk BUKAN Blimi, maka validasi tombol Jenis Orderan tetap berjalan
+  if (currentShop.nama !== 'BLIMI') {
+    const selectedKetOpt = document.querySelector('input[name="p_ket_opt"]:checked');
+    if (!selectedKetOpt) {
+      return alert("Silahkan pilih Keterangan (Blangko, Cetak Undangan, atau Lain-lain) terlebih dahulu!");
+    }
+    ketPilihan = selectedKetOpt.value; 
+  }
   const shopInitial = currentShop.nama ? currentShop.nama.charAt(0).toUpperCase() : '?';
   const inputPelanggan = (document.getElementById('inputPelangganUtama').value || 'UMUM').toUpperCase();
   
