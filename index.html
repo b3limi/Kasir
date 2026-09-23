@@ -249,24 +249,7 @@ display: block !important;
     </div>
 
     <div class="space-y-4">
-      <button onclick="selectShop('Muflih Print', 'Jl. Barawaja No. 19, Makassar')" 
-              class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95">
-        <div class="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">M</div>
-        <div class="text-left">
-          <p class="font-bold text-white group-hover:text-blue-400 transition">Muflih Print</p>
-          <p class="text-xs text-slate-400">Jl. Barawaja No. 19, Makassar</p>
-        </div>
-      </button>
-
-      <button onclick="selectShop('Vi Printing', 'Jl. Rappokalling Raya, Makassar')" 
-              class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95">
-        <div class="w-12 h-12 bg-purple-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">V</div>
-        <div class="text-left">
-          <p class="font-bold text-white group-hover:text-blue-400 transition">Vi Printing</p>
-          <p class="text-xs text-slate-400">Jl. Rappokalling Raya, Makassar</p>
-        </div>
-      </button>
-
+      
       <!-- TAMBAHAN: Tombol BLIMI -->
       <button onclick="selectShop('BLIMI', 'Jl. Kumala No. 05, Makassar')" 
               class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95 mt-2">
@@ -436,9 +419,8 @@ display: block !important;
   </nav>
 
   <script>
-   const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwsQwolra5df7rsSvEQO9rUlRWqlszE4W8l-xvWYDDeMy67SgZinnjgbAA7iFr44fDB/exec";
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzDRDO0V5dCpzZftl3b_h41JDe6NuHcxuLAz6C8yQOsgzII8K24rUyMRbE-RfAoN4o/exec";
 // UBAH NOMOR INI SETIAP KALI ANDA MELAKUKAN PEMBARUAN KODE
-
 const CURRENT_APP_VERSION = "2026.09.21-v3";
    let allTransactions = [];
    let currentFetchId = 0;
@@ -465,6 +447,7 @@ let searchTimeout;
 const SUPABASE_URL = "https://ymyxlaunlfdpbovidatw.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlteXhsYXVubGZkcGJvdmlkYXR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM3NjkwOTAsImV4cCI6MjA5OTM0NTA5MH0.3Gji3wGmjQt_J5BfaELGz_-VT4MY39H6G1V7PyDCI90";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 
 // VARIABEL BARU UNTUK MELACAK KONEKSI SUPABASE
 let isSupabaseConnected = false;
@@ -1027,7 +1010,6 @@ function refreshIcons(containerId) {
 function getActualCashMethod(selectedMethod) {
   if (selectedMethod === "Cash") {
     if (currentShop.nama === "VI PRINTING") return "Cash Vi Printing";
-    if (currentShop.nama === "BLIMI") return "Cash Blimi"; // <-- Tambahan untuk BLIMI
     return "Cash Muflih Print"; // Default untuk Muflih Print dan Admin
   }
   return selectedMethod; // Biarkan Rekening / Kas Bendahara
@@ -1128,26 +1110,39 @@ function showBalanceLoading(isLoading) {
       </div>
     `;
   } else {
+    const isBlimi = currentShop.nama === 'BLIMI';
+
     container.innerHTML = `
       <div class="flex flex-col w-full justify-center mt-1">
+        
         <!-- Baris Atas: Ringkasan Global -->
-        <div class="flex justify-between items-center mb-1 px-1 gap-2">
+        <div class="flex items-center mb-1 px-1 gap-2">
+          <!-- Total Kasir Tetap Tampil -->
           <span class="text-[9px] uppercase font-bold text-slate-400">Total Kasir: <span id="saldo-kasir-total" class="text-slate-800 text-[10px]">Rp 0</span></span>
           
-          <!-- Pemisah Baru -->
-          <span class="text-slate-300 text-[10px]">|</span>
-          
-          <span class="text-[9px] uppercase font-bold text-slate-400">Bendahara: <span id="saldo-bendahara" class="text-orange-600 text-[10px]">Rp 0</span></span>
+          <!-- Bendahara disembunyikan via CSS jika BLIMI (tapi elemen tetap ada agar JS tidak error) -->
+          <span class="${isBlimi ? 'hidden' : 'text-slate-300 text-[10px]'}">|</span>
+          <span class="${isBlimi ? 'hidden' : 'text-[9px] uppercase font-bold text-slate-400'}">Bendahara: <span id="saldo-bendahara" class="text-orange-600 text-[10px]">Rp 0</span></span>
         </div>
-        
-        <!-- Baris Bawah: Rincian 3 Dompet Kasir Aktif -->
+
+        <!-- Baris Bawah: Rincian Dompet Kasir Aktif -->
         <div class="flex justify-between items-center bg-slate-50 p-1.5 rounded-lg border border-slate-100 shadow-inner">
           <div class="flex items-center gap-3 w-full justify-between px-1">
-             <span class="text-[9px] font-bold text-slate-600 flex gap-1"><span class="text-orange-500 font-black">M:</span> <span id="saldo-cash-muflih">0</span></span>
-             <span class="text-slate-300">|</span>
-             <span class="text-[9px] font-bold text-slate-600 flex gap-1"><span class="text-purple-500 font-black">V:</span> <span id="saldo-cash-vi">0</span></span>
+             
+             <!-- Cash Muflih (Selalu Tampil) -->
+             <span class="text-[9px] font-bold text-slate-600 flex gap-1">
+                <span class="text-orange-500 font-black">${isBlimi ? 'C:' : 'M:'}</span> 
+                <span id="saldo-cash-muflih">0</span>
+             </span>
+             
+             <!-- Cash Vi (Disembunyikan jika BLIMI) -->
+             <span class="${isBlimi ? 'hidden' : 'text-slate-300'}">|</span>
+             <span class="${isBlimi ? 'hidden' : 'text-[9px] font-bold text-slate-600 flex gap-1'}"><span class="text-purple-500 font-black">V:</span> <span id="saldo-cash-vi">0</span></span>
+             
+             <!-- Rekening (Selalu Tampil) -->
              <span class="text-slate-300">|</span>
              <span class="text-[9px] font-bold text-slate-600 flex gap-1"><span class="text-blue-500 font-black">R:</span> <span id="saldo-rekening">0</span></span>
+          
           </div>
         </div>
       </div>
@@ -3164,10 +3159,35 @@ if ((item.isRekap && item.isRekap !== false && item.isRekap !== "false" && item.
       return 'bg-slate-100 text-slate-600 ring-slate-500/10';
     };
 
+    // ===== TAMBAHAN LOGIKA CUSTOM JUDUL UNTUK BLIMI =====
+    let displayTitle = t.ket; 
+    
+    if (currentShop.nama === 'BLIMI') {
+        let firstItemName = "";
+        try {
+            const items = typeof t.detail === 'string' ? JSON.parse(t.detail) : (t.detail || []);
+            if (Array.isArray(items) && items.length > 0) {
+                firstItemName = items[0].nama || "";
+            }
+        } catch (e) {}
+        
+        const namaPelanggan = (t.sub && t.sub !== '-') ? t.sub : 'UMUM';
+        
+        if (firstItemName) {
+            displayTitle = `${namaPelanggan} - ${firstItemName}`;
+        }
+    }
+    // =====================================================
+
     const div = document.createElement('div');
     div.className = `group mx-4 my-2 p-4 bg-white rounded-xl border border-slate-100 shadow-sm hover:shadow-md hover:border-slate-200 transition-all duration-200 cursor-pointer active:scale-[0.98]`;
     
     div.onclick = () => showDetail(t);
+    let displayMetode = t.metode;
+    
+    if (currentShop.nama === 'BLIMI' && t.metode.includes('Cash Muflih')) {
+      displayMetode = 'CASH';
+    }
     
     div.innerHTML = `
       <div class="flex justify-between items-start">
@@ -3179,8 +3199,9 @@ if ((item.isRekap && item.isRekap !== false && item.isRekap !== "false" && item.
             <span class="text-[10px] text-slate-400 font-mono">${t.id}</span>
           </div>
           
+          <!-- Ubah \${t.ket} menjadi \${displayTitle} di bawah ini -->
           <h3 class="font-semibold text-slate-800 text-sm mb-2 group-hover:text-blue-600 transition-colors">
-            ${t.ket}
+            ${displayTitle}
           </h3>
           
           <div class="flex items-center gap-3 text-slate-400">
@@ -3196,12 +3217,10 @@ if ((item.isRekap && item.isRekap !== false && item.isRekap !== "false" && item.
         </div>
 
         <div class="text-right flex flex-col items-end">
-          <!-- Ubah warna agar omset (biru/ungu) mudah dibedakan dari kas murni (hijau/merah) -->
           <p class="font-bold text-base ${isMasuk ? (isOmsetMode ? 'text-blue-600' : 'text-emerald-600') : (isOmsetMode ? 'text-purple-600' : 'text-rose-600')}">
             ${isMasuk ? '+' : '-'} ${formatRupiah(displayAmount)}
           </p>
           
-          <!-- Info tambahan jika Mode Omset aktif -->
           ${isOmsetMode 
             ? (displayAmount !== originalKas 
                 ? `<p class="text-[9px] text-orange-500 font-bold mb-1 mt-0.5">Kas: ${formatRupiah(originalKas)}</p>` 
@@ -3211,13 +3230,12 @@ if ((item.isRekap && item.isRekap !== false && item.isRekap !== "false" && item.
           
           <div class="mt-2 flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md">
             <div class="w-1.5 h-1.5 rounded-full ${isMasuk ? 'bg-emerald-500' : 'bg-rose-500'}"></div>
-            <span class="text-[10px] font-bold text-slate-600 uppercase tracking-wider">${t.metode}</span>
+            <span class="text-[10px] font-bold text-slate-600 uppercase tracking-wider">${displayMetode}</span>
           </div>
         </div>
       </div>
     `;
     
-    // LANGKAH OPTIMASI 2: Masukkan elemen ke wadah virtual, bukan ke layar
     fragment.appendChild(div);
   });
   
@@ -5063,17 +5081,15 @@ function savePenjualan() {
     metodePembayaran = getActualCashMethod(selectedRadio.value);
   }
 
-  // Set default Keterangan menjadi "PENJUALAN" untuk toko BLIMI
-  let ketPilihan = "PENJUALAN"; 
-  
-  // Jika yang masuk BUKAN Blimi, maka validasi tombol Jenis Orderan tetap berjalan
-  if (currentShop.nama !== 'BLIMI') {
-    const selectedKetOpt = document.querySelector('input[name="p_ket_opt"]:checked');
-    if (!selectedKetOpt) {
-      return alert("Silahkan pilih Keterangan (Blangko, Cetak Undangan, atau Lain-lain) terlebih dahulu!");
-    }
-    ketPilihan = selectedKetOpt.value; 
+  let ketPilihan = "LAIN-LAIN"; // Default untuk BLIMI
+if (currentShop.nama !== 'BLIMI') {
+  const selectedKetOpt = document.querySelector('input[name="p_ket_opt"]:checked');
+  if (!selectedKetOpt) {
+    return alert("Silahkan pilih Keterangan (Blangko, Cetak Undangan, atau Lain-lain) terlebih dahulu!");
   }
+  ketPilihan = selectedKetOpt.value;
+}
+  
   const shopInitial = currentShop.nama ? currentShop.nama.charAt(0).toUpperCase() : '?';
   const inputPelanggan = (document.getElementById('inputPelangganUtama').value || 'UMUM').toUpperCase();
   
@@ -6266,11 +6282,11 @@ function showTransferForm() {
   let optionsHTML = '';
   
   if (currentShop.nama === 'BLIMI') {
-    optionsHTML = `
-      <option value="Cash Blimi">Kas Cash</option>
-      <option value="Rekening">Rekening Bank</option>
-    `;
-  } else {
+  optionsHTML = `
+    <option value="Cash Muflih Print">Kas Cash</option>
+    <option value="Rekening">Rekening Bank</option>
+  `;
+} else {
     const myCash = currentShop.nama === 'VI PRINTING' ? 'Cash Vi Printing' : 'Cash Muflih Print';
     const otherCash = currentShop.nama === 'VI PRINTING' ? 'Cash Muflih Print' : 'Cash Vi Printing';
 
@@ -6343,7 +6359,7 @@ function showTransferForm() {
   } else {
     document.getElementById('t_ke').selectedIndex = 2; 
   }
-
+  
   // Panggil validasi awal saat form dibuka
   validateTransfer();
 }
