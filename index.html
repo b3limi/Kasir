@@ -593,7 +593,7 @@ function filterModalPelanggan() {
   const queryLower = queryText.toLowerCase();
   
   // Filter daftar list
-  const filtered = dataPelangganGlobal.filter(p => p.toLowerCase().includes(queryLower));
+  const filtered = dataPelangganGlobal.filter(p => String(p).toLowerCase().includes(queryLower));
   renderListPelanggan(filtered);
 
   // Logika memunculkan tombol secara dinamis
@@ -608,11 +608,14 @@ function filterModalPelanggan() {
   }
 }
 
-// 6. Fungsi buka/tutup modal
 function openModalPelanggan() {
   document.getElementById('modalPelanggan').classList.remove('hidden');
-  document.getElementById('searchModalPelanggan').focus();
-  // Render ulang icon lucide pada modal yang baru dibuka
+  
+  // Berikan jeda 100ms agar browser selesai merender modal sebelum fokus ke input
+  setTimeout(() => {
+    document.getElementById('searchModalPelanggan').focus();
+  }, 100);
+  
   if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
