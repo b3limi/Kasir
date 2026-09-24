@@ -2274,6 +2274,8 @@ window.prosesUpdateTerpilihLangsung = async function() {
                if (Array.isArray(items)) {
                    items.forEach(item => {
                        const nmBrg = (item.nama || "").toUpperCase();
+                       
+                       // HANYA UPDATE BARANG YANG DICENTANG SAJA
                        if (u.selectedItems.includes(nmBrg)) {
                            const teksKolektif = u.invoiceTexts[nmBrg];
                            if (!teksKolektif || teksKolektif.trim() === "") {
@@ -2283,10 +2285,9 @@ window.prosesUpdateTerpilihLangsung = async function() {
                                item.isRekap = teksKolektif;
                                item.invoice = teksKolektif;
                            }
-                       } else if (u.unselectedItems.includes(nmBrg)) {
-                           item.isRekap = false; 
-                           item.invoice = "";
-                       }
+                       } 
+                       // Bagian 'else if (u.unselectedItems.includes(nmBrg))' DIHAPUS DARI SINI
+                       // agar barang yang tidak dicentang tetap mempertahankan teks invoicenya
                    });
                    target.detail = items; 
                }
@@ -2294,7 +2295,6 @@ window.prosesUpdateTerpilihLangsung = async function() {
         });
 
         // 3. PAYLOAD BARU: Hanya mengirim 'set_invoice' dan data 'updates'
-        // (parameter 'items' sengaja dihapus agar tidak masuk ke rekap harian)
         const payload = { 
             action: 'set_invoice', 
             updates: updatesArray 
