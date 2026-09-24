@@ -289,27 +289,30 @@ display: block !important;
   </div>
 
   <!-- Modal Daftar Pelanggan -->
-<div id="modalPelanggan" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex justify-center items-center hidden z-50">
-  <div class="bg-white rounded-lg shadow-xl w-11/12 md:w-1/2 max-w-lg p-6 flex flex-col h-3/4">
-    <div class="flex justify-between items-center mb-4">
+<div id="modalPelanggan" class="fixed inset-0 bg-gray-800 bg-opacity-75 flex justify-center items-start pt-10 hidden z-50">
+  <div class="bg-white rounded-2xl shadow-xl w-11/12 md:w-1/2 max-w-lg p-5 flex flex-col max-h-[85vh]">
+    <div class="flex justify-between items-center mb-4 shrink-0">
       <h2 class="text-xl font-bold text-gray-800">Daftar Pelanggan</h2>
       <button onclick="closeModalPelanggan()" class="text-gray-500 hover:text-red-500 font-bold text-2xl">&times;</button>
     </div>
     
     <!-- Input Pencarian Pelanggan -->
-    <input type="text" id="searchModalPelanggan" class="w-full border rounded p-2 mb-4 focus:outline-none focus:border-blue-500" placeholder="Cari atau Ketik Pelanggan Baru..." onkeyup="filterModalPelanggan()">
+    <div class="relative shrink-0 mb-4">
+      <i data-lucide="search" class="absolute left-3 top-3.5 w-4 h-4 text-slate-400"></i>
+      <input type="text" id="searchModalPelanggan" class="w-full border border-slate-200 bg-slate-50 rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" placeholder="Cari atau Ketik Pelanggan Baru..." oninput="filterModalPelanggan()">
+    </div>
     
-    <!-- Daftar List Pelanggan (Bisa di-scroll) -->
-    <div class="flex-grow overflow-y-auto border rounded p-2 bg-gray-50">
+    <!-- Daftar List Pelanggan (Bisa di-scroll, mengisi sisa ruang layar) -->
+    <div class="flex-1 overflow-y-auto border border-slate-200 rounded-xl p-2 bg-white min-h-[200px]">
       <ul id="listDaftarPelanggan" class="space-y-1">
         <!-- List item pelanggan akan di-render dari JS -->
       </ul>
     </div>
     
-    <!-- Tombol untuk menggunakan input yang belum ada di database -->
-    <div class="mt-4">
-      <button onclick="pilihPelangganManual()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-        Gunakan yang Diketik
+    <!-- Tombol untuk menggunakan input yang belum ada di database (Sembunyi secara default) -->
+    <div class="shrink-0 mt-3">
+      <button id="btn-manual-pelanggan" onclick="pilihPelangganManual()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hidden active:scale-95 transition-all">
+        Gunakan "<span id="manual-text-pelanggan"></span>"
       </button>
     </div>
   </div>
@@ -585,11 +588,40 @@ function renderListPelanggan(data) {
 
 // 3. Filter/Pencarian di dalam Modal
 function filterModalPelanggan() {
-  const query = document.getElementById('searchModalPelanggan').value.toLowerCase();
-  const filtered = dataPelangganGlobal.filter(p => p.toLowerCase().includes(query));
+  const inputEl = document.getElementById('searchModalPelanggan');
+  const queryText = inputEl.value;
+  const queryLower = queryText.toLowerCase();
+  
+  // Filter daftar list
+  const filtered = dataPelangganGlobal.filter(p => p.toLowerCase().includes(queryLower));
   renderListPelanggan(filtered);
+
+  // Logika memunculkan tombol secara dinamis
+  const btnManual = document.getElementById('btn-manual-pelanggan');
+  const manualText = document.getElementById('manual-text-pelanggan');
+
+  if (queryText.trim().length > 0) {
+    btnManual.classList.remove('hidden');
+    if (manualText) manualText.innerText = queryText;
+  } else {
+    btnManual.classList.add('hidden');
+  }
 }
 
+// 6. Fungsi buka/tutup modal
+function openModalPelanggan() {
+  document.getElementById('modalPelanggan').classList.remove('hidden');
+  document.getElementById('searchModalPelanggan').focus();
+  // Render ulang icon lucide pada modal yang baru dibuka
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeModalPelanggan() {
+  document.getElementById('modalPelanggan').classList.add('hidden');
+  document.getElementById('searchModalPelanggan').value = '';
+  document.getElementById('btn-manual-pelanggan').classList.add('hidden'); // Sembunyikan kembali tombol
+  renderListPelanggan(dataPelangganGlobal); // Reset filter
+}
 // 4. Pilih Pelanggan (dari klik list)
 function setPelanggan(nama) {
   // Ganti 'inputPelangganUtama' dengan ID input nama pelanggan di form kasir Anda
@@ -603,18 +635,6 @@ function pilihPelangganManual() {
   if(val.trim() !== '') {
     setPelanggan(val.trim());
   }
-}
-
-// 6. Fungsi buka/tutup modal
-function openModalPelanggan() {
-  document.getElementById('modalPelanggan').classList.remove('hidden');
-  document.getElementById('searchModalPelanggan').focus();
-}
-
-function closeModalPelanggan() {
-  document.getElementById('modalPelanggan').classList.add('hidden');
-  document.getElementById('searchModalPelanggan').value = '';
-  renderListPelanggan(dataPelangganGlobal); // Reset filter
 }
 
 // Jalankan saat load
