@@ -564,23 +564,30 @@ document.addEventListener("wheel", function(event) {
 
 
 let dataPelangganGlobal = [];
+let isLoadingPelanggan = false; // Tambahan: Penanda status loading
 
 async function loadDaftarPelanggan() {
+  isLoadingPelanggan = true; // Set status sedang memuat
   const modalList = document.getElementById('listDaftarPelanggan');
   const inlineList = document.getElementById('inlineListDaftarPelanggan');
   
-  // 1. Tampilan Efek Loading (Skeleton)
+  // 1. Tampilan Efek Loading (Spinner + Teks Animasi)
   const loadingHTML = `
-    <div class="animate-pulse p-2 space-y-3">
-      <div class="h-8 bg-slate-100 rounded-lg w-full"></div>
-      <div class="h-8 bg-slate-100 rounded-lg w-3/4"></div>
-      <div class="h-8 bg-slate-100 rounded-lg w-5/6"></div>
+    <div class="flex flex-col items-center justify-center p-6 text-slate-400">
+      <i data-lucide="loader-2" class="w-8 h-8 animate-spin text-blue-500 mb-2"></i>
+      <p class="text-xs font-bold animate-pulse">Memuat Data Pelanggan...</p>
     </div>
   `;
   
   // Suntikkan efek loading ke container Modal dan Inline
   if (modalList) modalList.innerHTML = loadingHTML;
   if (inlineList) inlineList.innerHTML = loadingHTML;
+  
+  // Pastikan ikon Lucide ter-render di dalam animasi loading
+  if (typeof lucide !== 'undefined') {
+    if (modalList) lucide.createIcons({ root: modalList });
+    if (inlineList) lucide.createIcons({ root: inlineList });
+  }
 
   try {
     const { data, error } = await supabaseClient
@@ -604,6 +611,8 @@ async function loadDaftarPelanggan() {
     const errorHTML = `<div class="p-3 text-center text-red-500 text-xs font-bold">Gagal memuat data pelanggan.</div>`;
     if (modalList) modalList.innerHTML = errorHTML;
     if (inlineList) inlineList.innerHTML = errorHTML;
+  } finally {
+    isLoadingPelanggan = false; // Kembalikan status setelah selesai
   }
 }
 
@@ -1397,9 +1406,9 @@ const bal = data.balances;
     showBalanceLoading(false);
   } finally {
     // ---> PANGGIL POP-UP TIPS KASIR <---
-    if (typeof checkTipsMultiPiutangFeature === 'function') {
-      checkTipsMultiPiutangFeature();
-    }
+    // if (typeof checkTipsMultiPiutangFeature === 'function') {
+    //   checkTipsMultiPiutangFeature();
+    // }
   }
 }
 
@@ -5276,7 +5285,23 @@ function changeTab(tab) {
         addItem(false);
         
         if (typeof lucide !== 'undefined') lucide.createIcons();
-        renderInlineListPelanggan(typeof dataPelangganGlobal !== 'undefined' ? dataPelangganGlobal : []);
+        
+        // Logika baru: Cek apakah masih loading atau sudah bisa dirender
+        if (typeof isLoadingPelanggan !== 'undefined' && isLoadingPelanggan) {
+            const inlineList = document.getElementById('inlineListDaftarPelanggan');
+            if (inlineList) {
+                inlineList.innerHTML = `
+                  <div class="flex flex-col items-center justify-center p-6 text-slate-400">
+                    <i data-lucide="loader-2" class="w-8 h-8 animate-spin text-blue-500 mb-2"></i>
+                    <p class="text-xs font-bold animate-pulse">Memuat Data Pelanggan...</p>
+                  </div>
+                `;
+                if (typeof lucide !== 'undefined') lucide.createIcons({ root: inlineList });
+            }
+        } else {
+            renderInlineListPelanggan(typeof dataPelangganGlobal !== 'undefined' ? dataPelangganGlobal : []);
+        }
+
         setTimeout(() => {
             const inlineSearch = document.getElementById('inlineSearchPelanggan');
             if(inlineSearch) inlineSearch.focus(); 
