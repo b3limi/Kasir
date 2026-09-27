@@ -36,6 +36,31 @@
       padding-right: env(safe-area-inset-right);
     }
 
+    /* CSS BARU: Mendorong tombol Tambah/Simpan naik saat keyboard terbuka di Mode Pintas */
+@media (max-width: 767px) and (orientation: portrait) {
+  body.mode-pintas-active #pintas-action-wrapper {
+    position: -webkit-sticky;
+    position: sticky;
+    bottom: 60px; /* Menyesuaikan dengan tinggi navigasi bawah (bottom bar) */
+    z-index: 50;
+    background-color: #f8fafc; 
+    padding-top: 12px;
+    padding-bottom: 12px;
+    margin-bottom: -12px;
+  }
+  
+  /* Efek gradasi transparan agar konten yang tergulung di bawahnya tersamarkan */
+  body.mode-pintas-active #pintas-action-wrapper::before {
+    content: '';
+    position: absolute;
+    top: -20px;
+    left: 0;
+    right: 0;
+    height: 20px;
+    background: linear-gradient(to top, #f8fafc, transparent);
+    pointer-events: none;
+  }
+}
   
 @media (min-width: 768px) {
   body.mode-pintas-active .qty-wrapper {
@@ -288,11 +313,11 @@ display: block !important;
     order: 1;
     margin-bottom: 0 !important;
   }
-  body.mode-pintas-active .qty-wrapper {
+ body.mode-pintas-active .qty-wrapper {
     order: 2;
     grid-column: auto !important; 
-    width: 80px !important;
-    display: block !important;
+    width: 130px !important; /* Diperlebar dari 80px agar muat untuk tombol hapus */
+    display: flex !important; /* Diubah dari block menjadi flex agar input dan tombol sejajar */
   }
   body.mode-pintas-active .qty-wrapper label {
     display: none !important; /* Sembunyikan tulisan 'QTY' agar sejajar rapi */
@@ -318,8 +343,7 @@ display: block !important;
     </div>
 
      <div class="space-y-4">
-      
-      <!-- TAMBAHAN: Tombol BLIMI -->
+           <!-- TAMBAHAN: Tombol BLIMI -->
       <button onclick="selectShop('BLIMI', 'Jl. Kumala No. 05, Makassar')" 
               class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95 mt-2">
         <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">B</div>
@@ -1079,15 +1103,15 @@ function generatePaymentMethodHTML(radioName, options = {}) {
         <input type="radio" name="${radioName}" value="Rekening" class="hidden peer ${opClasses}" ${onChange}>
         <div class="${innerLayout} rounded-xl border-2 border-slate-100 transition-all ${theme.border} ${theme.bg} group-active:scale-95 ${opDisabled}">
           <i data-lucide="credit-card" class="w-4 h-4 text-slate-400 ${theme.icon}"></i>
-          <span class="font-bold text-slate-600 ${textClass} ${theme.text}">Rekening</span>
+          <span class="font-bold text-slate-600 ${textClass} ${theme.text}">Rek</span>
         </div>
       </label>
       ${incShopee ? `
       <label class="cursor-pointer group ${opLabelClasses}">
         <input type="radio" name="${radioName}" value="Shopee" class="hidden peer ${opClasses}" ${onChange}>
-        <div class="${innerLayout} rounded-xl border-2 border-slate-100 transition-all ${theme.border} ${theme.bg} group-active:scale-95 ${opDisabled}">
+        <div class="${innerLayout} rounded-xl border-2 border-slate-100 transition-all${theme.border} ${theme.bg} group-active:scale-95${opDisabled}">
           <i data-lucide="shopping-bag" class="w-4 h-4 text-slate-400 ${theme.icon}"></i>
-          <span class="font-bold text-slate-600 ${textClass} ${theme.text}">Shopee</span>
+          <span class="font-bold text-slate-600 ${textClass}${theme.text}">Shopee</span>
         </div>
       </label>` : ''}
     </div>
@@ -4758,84 +4782,95 @@ function changeTab(tab) {
     <div id="itemContainer" class="space-y-0"></div>
   </div>
 </div>
- <!-- Grid Dinamis: Mobile 2 Kolom, Desktop 3 Kolom -->
-<div class="grid grid-cols-2 gap-3 mt-3 md:flex md:flex-row md:gap-0 md:divide-x md:divide-slate-200">
+ 
+<!-- Grid Dinamis: Mobile 2 Kolom, Desktop 3 Kolom -->
+<div class="flex flex-col mt-3 md:flex-row md:gap-0 md:divide-x md:divide-slate-200">
     
-    <!-- KOLOM KIRI (Desktop) -->
-    <div class="contents md:flex md:flex-col md:flex-1 md:gap-3 md:pr-4">
-        <!-- Total Tagihan (Diubah menjadi order-2) -->
-        <div class="order-2 md:order-none w-full hide-on-pintas">
-            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">Total Tagihan</label>
-            <div class="w-full px-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-base font-extrabold text-blue-800 flex items-center h-11">
-                <span id="p_total_raw" class="w-full accounting">Rp 0</span>
-            </div>
-        </div>
-        
-        <!-- Diskon (Diubah menjadi order-3) -->
-        <div class="order-3 md:order-none w-full hide-on-pintas">
-            <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 block mb-1">Diskon (Rp)</label>
-            <input id="p_disc" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="0" 
-            class="w-full px-2 bg-slate-50 border-2 border-slate-200 rounded-xl accounting outline-none focus:ring-2 focus:ring-blue-500 text-base font-extrabold text-slate-700 h-11">
-        </div>
-
-        <!-- Total Akhir -->
-        <div class="order-4 md:order-none w-full hide-on-pintas">
-            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">Total Akhir</label>
-            <div class="w-full px-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-base font-extrabold text-blue-900 flex items-center h-11">
-                <span id="p_final" class="w-full accounting">Rp 0</span>
-            </div>
-        </div>
+    <!-- === TOMBOL TAMBAH BARANG KHUSUS MOBILE === -->
+    <div class="w-full hide-on-pintas mb-4 md:hidden">
+        <button onclick="addItem(true)" class="w-full h-11 px-4 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 active:scale-95 transition-all border-2 border-blue-200 shadow-sm shrink-0">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i> TAMBAH BARANG
+        </button>
     </div>
+    <!-- ========================================== -->
 
-    <!-- KOLOM TENGAH (Desktop) -->
-    <div class="contents md:flex md:flex-col md:flex-1 md:gap-3 md:px-4">
-        <!-- DP / Bayar -->
-        <div class="order-5 md:order-none w-full hide-on-pintas">
-            <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">DP / Bayar</label>
-            <input id="p_dp" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="0" 
-              class="w-full px-2 bg-green-50 border-2 border-green-200 rounded-xl text-base font-extrabold text-green-700 focus:ring-4 focus:ring-green-100 outline-none accounting h-11">
-        </div>
-
-        <!-- Sisa Piutang (Diubah menjadi col-span-1 agar sejajar) -->
-        <div class="order-6 md:order-none w-full col-span-1 hide-on-pintas">
-            <label id="p_status_label" class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">Sisa Piutang</label>
-            <div class="w-full px-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-base font-extrabold flex items-center h-11">
-                <span id="p_status_piutang" class="w-full accounting text-slate-500">Rp 0</span>
-            </div>
-        </div>
-
-        <!-- Metode (Diubah menjadi col-span-1 agar sejajar) -->
-        <div class="order-7 md:order-none w-full col-span-1 hide-on-pintas">
-            <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1 block">Metode</label>
+    <!-- Wrapper 2 Kolom untuk Mobile (Memiliki garis pembatas tengah) -->
+    <div class="grid grid-cols-2 divide-x divide-slate-200 md:flex md:flex-1 md:divide-x md:divide-slate-200 hide-on-pintas">  
+        <!-- KOLOM KIRI -->
+        <div class="flex flex-col gap-3 pr-2 md:flex-1 md:pr-4">
+            <!-- Total Tagihan -->
             <div class="w-full">
-              ${generatePaymentMethodHTML('payment-method', { color: 'blue' })}
+                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">Total Tagihan</label>
+                <div class="w-full px-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-base font-extrabold text-blue-800 flex items-center h-11">
+                    <span id="p_total_raw" class="w-full accounting">Rp 0</span>
+                </div>
+            </div>
+            
+            <!-- Diskon -->
+            <div class="w-full">
+                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 block mb-1">Diskon (Rp)</label>
+                <input id="p_disc" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="0" 
+                class="w-full px-2 bg-slate-50 border-2 border-slate-200 rounded-xl accounting outline-none focus:ring-2 focus:ring-blue-500 text-base font-extrabold text-slate-700 h-11">
+            </div>
+
+            <!-- Total Akhir -->
+            <div class="w-full">
+                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">Total Akhir</label>
+                <div class="w-full px-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-base font-extrabold text-blue-900 flex items-center h-11">
+                    <span id="p_final" class="w-full accounting">Rp 0</span>
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- KOLOM KANAN (Desktop) -->
-    <div class="contents md:flex md:flex-col md:flex-1 md:gap-3 md:pl-4">
-        <!-- Tambah Barang (Diubah menjadi order-1 dan col-span-2 agar membentang di paling atas) -->
-        <div class="order-1 md:order-none w-full col-span-2 hide-on-pintas">
-            <label class="hidden md:block text-[10px] font-bold text-transparent uppercase block mb-1 ml-1">Aksi</label>
+        <!-- KOLOM KANAN -->
+        <div class="flex flex-col gap-3 pl-2 md:flex-1 md:px-4">
+            <!-- DP / Bayar -->
+            <div class="w-full">
+                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">DP / Bayar</label>
+                <input id="p_dp" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="0" 
+                  class="w-full px-2 bg-green-50 border-2 border-green-200 rounded-xl text-base font-extrabold text-green-700 focus:ring-4 focus:ring-green-100 outline-none accounting h-11">
+            </div>
+
+            <!-- Sisa Piutang -->
+            <div class="w-full">
+                <label id="p_status_label" class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">Sisa Piutang</label>
+                <div class="w-full px-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-base font-extrabold flex items-center h-11">
+                    <span id="p_status_piutang" class="w-full accounting text-slate-500">Rp 0</span>
+                </div>
+            </div>
+
+            <!-- Metode -->
+            <div class="w-full">
+                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1 block">Metode</label>
+                <div class="w-full">
+                  ${generatePaymentMethodHTML('payment-method', { color: 'blue' })}
+                </div>
+            </div>
+        </div>
+    </div> <!-- Batas 2 Kolom Mobile -->
+
+    <!-- KOLOM AKSI (Kanan Desktop, Bawah Mobile) -->
+    <div class="flex flex-col gap-3 mt-4 md:mt-0 md:flex-1 md:pl-4">
+        <!-- Tambah Barang (KHUSUS DESKTOP) -->
+        <div class="w-full hide-on-pintas hidden md:block">
+            <label class="hidden md:block text-[10px] font-bold text-transparent uppercase mb-1 ml-1">Aksi</label>
             <button onclick="addItem(true)" class="w-full h-11 px-4 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 active:scale-95 transition-all border-2 border-blue-200 shrink-0">
                 <i data-lucide="plus-circle" class="w-4 h-4"></i> TAMBAH BARANG
             </button>
         </div>
 
         <!-- Estimasi WA -->
-        <div class="order-8 md:order-none w-full col-span-1 hide-on-pintas">
-            <label class="hidden md:block text-[10px] font-bold text-transparent uppercase block mb-1 ml-1">Estimasi</label>
+        <div class="w-full hide-on-pintas">
+            <label class="hidden md:block text-[10px] font-bold text-transparent uppercase mb-1 ml-1">Estimasi</label>
             <button onclick="salinEstimasiWA()" class="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-[12px] shadow-lg shadow-emerald-200 active:scale-95 transition-all flex items-center justify-center gap-1.5">
                <i data-lucide="message-circle" class="w-4 h-4"></i> ESTIMASI WA
             </button>
         </div>
 
-        <!-- Simpan (Mode Pintas disesuaikan lebarnya) -->
-        <div class="order-9 md:order-none w-full col-span-1 mode-pintas-full-width">
-            <label class="hidden md:block text-[10px] font-bold text-transparent uppercase block mb-1 ml-1">Simpan</label>
+        <!-- Simpan (Memiliki ID wrapper khusus untuk sticky mode pintas) -->
+        <div class="w-full mode-pintas-full-width" id="pintas-action-wrapper">
+            <label class="hidden md:block text-[10px] font-bold text-transparent uppercase mb-1 ml-1">Simpan</label>
             <div class="flex gap-2">
-                <!-- Class shrink-0 diganti menjadi flex-1 w-full agar sama dengan tombol simpan -->
                 <button onclick="addItem(true)" class="show-on-pintas flex-1 w-full h-11 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-bold text-[12px] flex items-center justify-center gap-1.5 active:scale-95 transition-all border-2 border-blue-200">
                    <i data-lucide="plus-circle" class="w-4 h-4"></i> TAMBAH
                 </button>
@@ -5322,26 +5357,23 @@ function addItem(autoOpen = true) {
   const id = Date.now();
   const div = document.createElement('div');
   div.id = `item-${id}`;
-  // TAMBAHKAN class "kasir-item" di sini
   div.className = "kasir-item bg-white p-3 rounded-xl border border-slate-200 mb-3 shadow-sm animate-in slide-in-from-left duration-300";
+  
   div.innerHTML = `
-    <!-- TAMBAHKAN class "kasir-item-top" di sini -->
-    <div class="kasir-item-top flex gap-2 mb-2">
-      <div class="relative flex-1">
+    <!-- BAGIAN ATAS: HANYA INPUT NAMA BARANG -->
+    <div class="kasir-item-top mb-2">
+      <div class="relative w-full">
         <input type="text" id="input-${id}" placeholder="Pilih barang..." readonly
                onclick="openProductModal('input-${id}')"
                class="w-full p-2.5 border rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-100 bg-slate-50 item-name cursor-pointer">
       </div>
-      <button onclick="document.getElementById('item-${id}').remove(); calcTotal()" 
-              class="w-10 h-10 shrink-0 bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 rounded-lg flex items-center justify-center transition-colors">
-        <i data-lucide="trash-2" class="w-4 h-4"></i>
-      </button>
     </div>
 
-    <!-- TAMBAHKAN class "kasir-item-bottom" di sini -->
-    <div class="kasir-item-bottom grid grid-cols-4 md:grid-cols-12 gap-2 items-center">
+    <!-- BAGIAN BAWAH: GRID (Kategori, Qty, Harga, Tombol Hapus) -->
+    <div class="kasir-item-bottom grid grid-cols-4 md:grid-cols-12 gap-2 items-start">
       
-      <div class="col-span-3 md:col-span-5 hide-on-pintas">
+      <!-- KATEGORI (Sembunyi di Mode Pintas) -->
+      <div class="col-span-3 md:col-span-4 hide-on-pintas">
         <label class="block md:hidden text-[9px] font-bold text-slate-400 ml-1 mb-0.5">KATEGORI</label>
         <input type="text" id="kat-${id}" placeholder="LOT" 
                oninput="this.value = this.value.toUpperCase()"
@@ -5349,23 +5381,41 @@ function addItem(autoOpen = true) {
                class="w-full p-2 border-2 border-slate-100 bg-white rounded-lg text-[10px] font-bold uppercase text-blue-600 h-10 outline-none focus:ring-2 focus:ring-blue-400 item-category">
       </div>
 
-      <div class="col-span-1 md:col-span-3 qty-wrapper">
-        <label class="block md:hidden text-[9px] font-bold text-slate-400 ml-1 mb-0.5">QTY</label>
-        <input type="number" placeholder="Qty" oninput="calcTotal()" value="1" onfocus="this.select()" 
-               class="w-full p-2 border-2 border-slate-200 rounded-lg text-sm font-black text-center h-10 outline-none focus:ring-2 focus:ring-blue-400 qty-input">
-      </div>
-
-      <!-- Cari bagian ini di dalam fungsi addItem -->
-      <div class="col-span-4 md:col-span-4 hide-on-pintas">
-        <label class="block md:hidden text-[9px] font-bold text-slate-400 ml-1 mb-0.5">HARGA</label>
-        <div class="relative">
-          <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 md:hidden">Rp</span>
-          <input type="text" inputmode="numeric" placeholder="Harga" 
-                 oninput="maskNominal(this); calcTotal()" 
-                 class="w-full p-2 pl-7 md:pl-2 border rounded-lg text-base font-bold accounting h-10 text-right outline-none focus:ring-2 focus:ring-blue-100 item-price">
+      <!-- QTY & TOMBOL HAPUS MODE PINTAS -->
+      <div class="col-span-1 md:col-span-3 qty-wrapper flex gap-2 items-end">
+        <div class="flex-1">
+            <label class="block md:hidden text-[9px] font-bold text-slate-400 ml-1 mb-0.5">QTY</label>
+            <input type="number" placeholder="Qty" oninput="calcTotal()" value="1" onfocus="this.select()" 
+                   class="w-full p-2 border-2 border-slate-200 rounded-lg text-sm font-black text-center h-10 outline-none focus:ring-2 focus:ring-blue-400 qty-input">
         </div>
         
-        <!-- TAMBAHAN: Label Info Harga Umum & Reseller (Bisa diklik) -->
+        <!-- Tombol Hapus: HANYA TAMPIL DI MODE PINTAS (Samping Qty) -->
+        <button onclick="document.getElementById('item-${id}').remove(); calcTotal()" 
+                class="show-on-pintas w-10 h-10 shrink-0 bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 rounded-lg flex items-center justify-center transition-colors">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- HARGA & TOMBOL HAPUS MODE STANDAR -->
+      <div class="col-span-4 md:col-span-5 hide-on-pintas">
+        <label class="block md:hidden text-[9px] font-bold text-slate-400 ml-1 mb-0.5">HARGA</label>
+        
+        <div class="flex gap-2 items-start">
+            <div class="relative flex-1">
+              <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 md:hidden">Rp</span>
+              <input type="text" inputmode="numeric" placeholder="Harga" 
+                     oninput="maskNominal(this); calcTotal()" 
+                     class="w-full p-2 pl-7 md:pl-2 border rounded-lg text-base font-bold accounting h-10 text-right outline-none focus:ring-2 focus:ring-blue-100 item-price">
+            </div>
+            
+            <!-- Tombol Hapus: HANYA TAMPIL DI MODE STANDAR (Samping Harga) -->
+            <button onclick="document.getElementById('item-${id}').remove(); calcTotal()" 
+                    class="hide-on-pintas w-10 h-10 shrink-0 bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 rounded-lg flex items-center justify-center transition-colors">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+        </div>
+        
+        <!-- Info Harga (Umum/Reseller) -->
         <div id="info-harga-${id}" class="hidden mt-1 px-1 flex justify-between text-[8px] text-slate-500 font-medium">
            <span id="label-umum-${id}" class="cursor-pointer hover:text-blue-600 transition-colors" title="Gunakan Harga Umum" onclick="setHargaItem('${id}', this.dataset.harga)"></span>
            <span id="label-reseller-${id}" class="cursor-pointer hover:text-blue-600 transition-colors" title="Gunakan Harga Reseller" onclick="setHargaItem('${id}', this.dataset.harga)"></span>
