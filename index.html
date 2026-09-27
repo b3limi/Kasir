@@ -36,29 +36,27 @@
       padding-right: env(safe-area-inset-right);
     }
 
-    /* CSS BARU: Mendorong tombol Tambah/Simpan naik saat keyboard terbuka di Mode Pintas */
-@media (max-width: 767px) and (orientation: portrait) {
+@media (max-width: 767px) {
   body.mode-pintas-active #pintas-action-wrapper {
-    position: -webkit-sticky;
-    position: sticky;
-    bottom: 60px; /* Menyesuaikan dengan tinggi navigasi bawah (bottom bar) */
-    z-index: 50;
-    background-color: #f8fafc; 
-    padding-top: 12px;
-    padding-bottom: 12px;
-    margin-bottom: -12px;
+    position: fixed !important;
+    bottom: 90px !important; /* SILAKAN UBAH ANGKA INI: Semakin besar semakin naik */
+    left: 16px;
+    right: 16px;
+    width: calc(100% - 32px) !important;
+    z-index: 99 !important;
+    background-color: #ffffff; 
+    padding: 12px;
+    border-radius: 16px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.1); /* Memberikan bayangan agar terlihat melayang */
   }
   
-  /* Efek gradasi transparan agar konten yang tergulung di bawahnya tersamarkan */
+  /* Memberikan ruang kosong ekstra di paling bawah halaman agar inputan tidak tertutup tombol yang melayang */
+  body.mode-pintas-active #section-form-kasir {
+    padding-bottom: 80px !important; 
+  }
+
   body.mode-pintas-active #pintas-action-wrapper::before {
-    content: '';
-    position: absolute;
-    top: -20px;
-    left: 0;
-    right: 0;
-    height: 20px;
-    background: linear-gradient(to top, #f8fafc, transparent);
-    pointer-events: none;
+    display: none !important;
   }
 }
   
@@ -343,7 +341,7 @@ display: block !important;
     </div>
 
      <div class="space-y-4">
-            <!-- TAMBAHAN: Tombol BLIMI -->
+           <!-- TAMBAHAN: Tombol BLIMI -->
       <button onclick="selectShop('BLIMI', 'Jl. Kumala No. 05, Makassar')" 
               class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95 mt-2">
         <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">B</div>
