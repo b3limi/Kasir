@@ -761,49 +761,8 @@ function pilihPelangganManual() {
     setPelanggan(val.trim());
   }
 }
-
 // Jalankan saat load
 window.addEventListener('DOMContentLoaded', loadDaftarPelanggan);
-
-async function broadcastNewTransaction(trxData) {
-  if (!trxData || !trxData.id) return;
-  // Tandai ID ini agar perangkat kita sendiri tidak terkena pantulan data (loop)
-  localUpdatedTransactions.add(trxData.id); 
-  
-  try {
-   // 1. Ambil saldo terbaru via RPC Supabase
-    const { data: bal, error: balError } = await supabaseClient.rpc('get_balance');
-    if (balError) throw balError;
-
-    // Pastikan formatnya array (mendukung pembayaran multi utang/piutang sekaligus)
-    const itemsToInsert = Array.isArray(trxData) ? trxData : [trxData];
-    
-    // 2. Tembakkan rincian lengkap ke tabel Supabase baru
-    for (const t of itemsToInsert) {
-       await supabaseClient.from('log_sinkronisasi_kasir').insert([{
-         trx_id: t.id,
-         waktu: t.waktu || '',
-         tipe: t.tipe || '',
-         kat: t.kat || '',
-         sub: t.sub || '',
-         ket: t.ket || '',
-         detail: typeof t.detail === 'string' ? t.detail : JSON.stringify(t.detail || []),
-         masuk: Number(t.masuk) || 0,
-         keluar: Number(t.keluar) || 0,
-         diskon: Number(t.diskon) || 0,
-         metode: t.metode || '',
-         revisi: t.revisi || '',
-         ket_selesai: t.ketSelesai || '',
-         saldo_muflih: Number(bal.cashMuflih) || 0,
-         saldo_vi: Number(bal.cashVi) || 0,
-         saldo_bank: Number(bal.bank) || 0,
-         saldo_bendahara: Number(bal.bendahara) || 0
-       }]);
-    }
-  } catch (err) {
-     console.error("Gagal broadcast sinkronisasi: ", err);
-  }
-}
 
 function setupSupabaseRealtime() {
   supabaseClient
@@ -1060,24 +1019,6 @@ window.salinEstimasiWA = function() {
 
   window.salinKeClipboard(teksWA);
 };
-
-function formatTransactionDate(tanggalManual, idTransaksi) {
-  let tglRaw = tanggalManual || '';
-  
-  // Jika tidak ada tanggal manual, cari otomatis di data transaksi yang sudah dimuat
-  if (!tglRaw) {
-    const trx = (typeof allTransactions !== 'undefined' ? allTransactions : []).find(t => t.id === idTransaksi);
-    tglRaw = (trx && trx.waktu) ? trx.waktu : '-';
-  }
-
-  if (tglRaw === '-') return 'N/A';
-
-  // Pisahkan jam (jika ada) dan ubah format YYYY-MM-DD menjadi DD-MM-YYYY
-  const datePart = tglRaw.split(' ')[0];
-  const parts = datePart.split('-');
-  
-  return parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : (datePart || 'N/A');
-}
 
 window.handleSearch = function() {
   clearTimeout(searchTimeout); 
@@ -1550,113 +1491,6 @@ window.openViewModeModal = function() {
     if (typeof lucide !== 'undefined') lucide.createIcons({ root: content });
 };
 
-function kelompokkanPenjualan(rawData) {
-    const groupedData = {};
-
-    // --- PROSES PENGELOMPOKAN ---
-    rawData.forEach(trx => {
-        const tanggal = trx.tanggal || '-';
-        const pelanggan = trx.pelanggan || 'Umum';
-        const namaBarang = trx.nama_barang || trx.item || '-';
-        const harga = parseFloat(trx.harga) || 0;
-        const qty = parseInt(trx.qty) || 1;
-        const subtotal = parseFloat(trx.subtotal) || (harga * qty);
-
-        // Kunci Tingkat 1: Tanggal + Pelanggan
-        const customerKey = `${tanggal}_${pelanggan}`;
-
-        if (!groupedData[customerKey]) {
-            groupedData[customerKey] = {
-                tanggal: tanggal,
-                pelanggan: pelanggan,
-                total_omset_pelanggan: 0,
-                rincian_barang: {} // Objek untuk menyimpan barang unik
-            };
-        }
-
-        // Akumulasi total omset untuk pelanggan ini
-        groupedData[customerKey].total_omset_pelanggan += subtotal;
-
-        // Kunci Tingkat 2: Nama Barang + Harga (di dalam kelompok pelanggan)
-        const itemKey = `${namaBarang}_${harga}`;
-
-        if (!groupedData[customerKey].rincian_barang[itemKey]) {
-            // Jika barang ini belum ada untuk pelanggan ini, buat baru
-            groupedData[customerKey].rincian_barang[itemKey] = {
-                nama_barang: namaBarang,
-                harga: harga,
-                qty: 0,
-                subtotal_barang: 0
-            };
-        }
-
-        // Akumulasi Qty dan Subtotal untuk barang yang sama persis
-        groupedData[customerKey].rincian_barang[itemKey].qty += qty;
-        groupedData[customerKey].rincian_barang[itemKey].subtotal_barang += subtotal;
-    });
-
-    // --- PROSES PERATAAN (FLATTENING) UNTUK TABEL ---
-    // Kita ubah formatnya menjadi array (daftar) per BARIS (per barang)
-    const dataSiapRender = [];
-
-    // Looping per pelanggan
-    Object.values(groupedData).forEach(customerData => {
-        const daftarBarang = Object.values(customerData.rincian_barang);
-        
-        // Looping barang dari pelanggan tersebut
-        daftarBarang.forEach((barang, index) => {
-            dataSiapRender.push({
-                tanggal: customerData.tanggal,
-                pelanggan: customerData.pelanggan,
-                
-                // Rincian barang
-                nama_barang: barang.nama_barang,
-                harga: barang.harga,
-                qty: barang.qty,
-                subtotal_barang: barang.subtotal_barang,
-                
-                // Menentukan baris pertama dari pelanggan ini
-                isFirstRow: index === 0, 
-                total_omset: index === 0 ? customerData.total_omset_pelanggan : null
-            });
-        });
-    });
-
-    return dataSiapRender;
-}
-
-function renderTabel(dataSiapRender) {
-    const tbody = document.getElementById('bodyTabelPenjualan'); // Ganti ID sesuai tabel Anda
-    tbody.innerHTML = '';
-
-    dataSiapRender.forEach(row => {
-        const tr = document.createElement('tr');
-        
-        // Beri garis pembatas tegas setiap kali ada pelanggan baru
-        if (row.isFirstRow) {
-            tr.className = 'border-t-2 border-gray-400 bg-gray-50';
-        } else {
-            tr.className = 'border-t border-gray-200 border-dashed';
-        }
-
-        tr.innerHTML = `
-            <td class="p-2">${row.isFirstRow ? row.tanggal : ''}</td>
-            <td class="p-2 font-semibold">${row.isFirstRow ? row.pelanggan : ''}</td>
-            
-            <td class="p-2">${row.nama_barang}</td>
-            <td class="p-2">Rp ${row.harga.toLocaleString('id-ID')}</td>
-            <td class="p-2 text-center">${row.qty}</td>
-            <td class="p-2">Rp ${row.subtotal_barang.toLocaleString('id-ID')}</td>
-            
-            <td class="p-2 font-bold text-blue-600">
-                ${row.isFirstRow ? `Rp ${row.total_omset.toLocaleString('id-ID')}` : ''}
-            </td>
-        `;
-        
-        tbody.appendChild(tr);
-    });
-}
-
 // Fungsi helper untuk cetak tombol modal
 function generateViewModeBtn(mode, title, desc, icon, isActive) {
     const activeClass = isActive ? 'bg-blue-50 border-blue-500 ring-4 ring-blue-100/50' : 'bg-white border-slate-200 hover:border-blue-300 hover:bg-slate-50';
@@ -2045,19 +1879,19 @@ function initRiwayatStructure() {
     </div>
     
     <div class="flex items-center gap-2 flex-1 justify-end flex-wrap sm:flex-nowrap">
-        
-        <!-- KOLOM INPUT TEKS INVOICE (Dipertahankan) -->
         <input type="text" id="global-invoice-input" placeholder="Ketik teks invoice..." class="flex-1 min-w-[120px] text-[10px] p-1.5 rounded-md border border-indigo-200 outline-none focus:ring-1 focus:ring-indigo-500">
         
-        <!-- TOMBOL 1: TERAPKAN TEKS CENTANG (Menjalankan setTeksInvoiceTerpilih) -->
         <button onclick="prosesUpdateTerpilihLangsung()" title="Terapkan teks pada input ke item yang dicentang" class="text-[10px] font-black text-white bg-blue-600 hover:bg-blue-700 px-2.5 py-1.5 rounded-lg flex items-center shrink-0 active:scale-95 transition-all shadow-sm">
             <i data-lucide="check-circle" class="w-3.5 h-3.5 sm:mr-1"></i> <span class="hidden sm:inline">Terapkan</span>
         </button>
 
-       <button onclick="salinRekapanKeClipboard()" title="Salin Data (Tanpa Header)" class="text-[10px] font-black text-white bg-green-600 hover:bg-green-700 px-2.5 py-1.5 rounded-lg flex items-center shrink-0 active:scale-95 transition-all shadow-sm">
-    <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 sm:mr-1"></i> <span class="hidden sm:inline">Salin</span>
-</button>
-      
+        <button onclick="kirimRekapanKeSpreadsheet()" title="Kirim ke Google Spreadsheet" class="text-[10px] font-black text-white bg-emerald-600 hover:bg-emerald-700 px-2.5 py-1.5 rounded-lg flex items-center shrink-0 active:scale-95 transition-all shadow-sm">
+            <i data-lucide="upload-cloud" class="w-3.5 h-3.5 sm:mr-1"></i> <span class="hidden sm:inline">Kirim Sheet</span>
+        </button>
+
+        <button onclick="salinRekapanKeClipboard()" title="Salin Data (Tanpa Header)" class="text-[10px] font-black text-white bg-green-600 hover:bg-green-700 px-2.5 py-1.5 rounded-lg flex items-center shrink-0 active:scale-95 transition-all shadow-sm">
+            <i data-lucide="copy" class="w-3.5 h-3.5 sm:mr-1"></i> <span class="hidden sm:inline">Salin</span>
+        </button>
     </div>
 </div>
 
@@ -2298,575 +2132,262 @@ window.resetTempFilters = function() {
     selectTempView('Semua');
 }
 
-async function downloadDataKeExcel() {
-    try {
-        const filtered = window.currentFilteredTransactions || [];
+// =====================================================================
+// 1. FUNGSI INTI: Memproses & Mengelompokkan Data (Dipakai bersama)
+// =====================================================================
+function getProcessedRekapanRows(allowedDates = null) {
+    const filtered = window.currentFilteredTransactions || [];
+    if (filtered.length === 0) return null;
+
+    const groupedMap = {};
+    const omsetPerTanggal = {};
+    const trxCheckedForOmset = new Set();
+    const masterArray = typeof productMaster !== 'undefined' ? productMaster : (window.productMaster || []);
+
+    filtered.forEach(t => {
+        if (t.kat === 'BATAL' || t.kat === 'DIHAPUS' || t.kat === 'CANCEL ORDER') return;
+        if ((t.kat || '').toUpperCase() !== 'PENJUALAN') return;
+
+        const tglRaw = (t.waktu || "").split(/[T ]/)[0];
+        const dateStr = typeof formatDateText === 'function' ? formatDateText(tglRaw) : tglRaw;
         
-        if (filtered.length === 0) {
-            alert('Tidak ada data rekapan penjualan untuk didownload!');
-            return;
+        // --- LOGIKA FILTER TANGGAL TERKUNCI ---
+        // Jika ada filter tanggal yang diizinkan, lewati transaksi di luar tanggal tersebut
+        if (allowedDates && !allowedDates.has(dateStr)) return;
+
+        const pelanggan = t.sub && t.sub !== '-' ? t.sub : 'UMUM';
+        const diskon = parseFloat(t.diskon) || 0;
+
+        let items = [];
+        try { items = typeof t.detail === 'string' ? JSON.parse(t.detail) : t.detail; } catch(e){}
+
+        // Kalkulasi Omset dan Status Lunas
+        let totalTagihan = 0;
+        if (Array.isArray(items) && items.length > 0) {
+            totalTagihan = items.reduce((sum, item) => sum + ((parseFloat(item.qty) || 0) * (parseFloat(item.harga) || 0)), 0);
+        }
+        const totalAkhir = totalTagihan > 0 ? (totalTagihan - diskon) : ((parseFloat(t.masuk) || parseFloat(t.keluar) || 0) - diskon);
+        const ketBayar = (parseFloat(t.masuk) === 0) ? "Belum lunas" : "";
+
+        // Akumulasi Omset Harian
+        if (!trxCheckedForOmset.has(t.id)) {
+            trxCheckedForOmset.add(t.id);
+            omsetPerTanggal[dateStr] = (omsetPerTanggal[dateStr] || 0) + totalAkhir;
         }
 
-        if (typeof showLoading === 'function') showLoading(true);
-      
-        const trxProcessedForOmset = new Set();
-        const omsetPerTanggal = {}; 
-        
-        // Ganti array flatItems menjadi object untuk keperluan grouping
-        const groupedItems = {}; 
-
-        // Urutkan transaksi dari tanggal terlama ke terbaru
-        const sortedTransactions = [...filtered].sort((a, b) => {
-            const tA = a.waktu || "";
-            const tB = b.waktu || "";
-            return tA > tB ? 1 : (tA < tB ? -1 : 0); 
-        });
-
-        sortedTransactions.forEach(t => {
-            if (t.kat === 'BATAL' || t.kat === 'DIHAPUS' || t.kat === 'CANCEL ORDER') return;
-            if ((t.kat || '').toUpperCase() !== 'PENJUALAN') return;
-
-            const tglRaw = t.waktu.split(/[T ]/)[0];
-            const tglFormatted = typeof formatDateText === 'function' ? formatDateText(tglRaw) : tglRaw;
-            const pelanggan = t.sub && t.sub !== '-' ? t.sub : 'UMUM';
-            const diskon = parseFloat(t.diskon) || 0;
-
-            let items = [];
-            try { items = typeof t.detail === 'string' ? JSON.parse(t.detail) : t.detail; } catch(e){}
-
-            // Hitung total tagihan/omset per transaksi
-            let trxOmset = 0;
-            if (Array.isArray(items) && items.length > 0) {
-                const totalTagihan = items.reduce((sum, item) => sum + ((parseFloat(item.qty) || 0) * (parseFloat(item.harga) || 0)), 0);
-                trxOmset = totalTagihan - diskon;
-            } else {
-                const nom = (parseFloat(t.masuk) > 0 ? parseFloat(t.masuk) : parseFloat(t.keluar)) || 0;
-                trxOmset = nom - diskon;
-            }
-
-            // Hitung Total Omset Harian
-            if (!omsetPerTanggal[tglFormatted]) {
-                omsetPerTanggal[tglFormatted] = 0;
-            }
-            if (!trxProcessedForOmset.has(t.id)) {
-                omsetPerTanggal[tglFormatted] += trxOmset;
-                trxProcessedForOmset.add(t.id);
-            }
-
-            if (Array.isArray(items) && items.length > 0) {
-                items.forEach((item) => {
-                    const hargaJual = parseFloat(item.harga) || 0;
-                    const qty = parseFloat(item.qty) || 0;
-                    const subtotal = hargaJual * qty;
-                    
-                    const namaBarangUpper = (item.nama || '').toUpperCase().trim();
-                    const invoiceItem = item.invoice || '-';
-                    
-                    let hargaReseller = 0;
-                    let kategori = ""; 
-                    
-                    const masterArray = typeof productMaster !== 'undefined' ? productMaster : (window.productMaster || []);
-                    const masterData = masterArray.find(p => (p.nama || '').trim() === namaBarangUpper);
-
-                    if (masterData) {
-                        hargaReseller = parseFloat(masterData.harga_reseller) || 0;
-                        kategori = masterData.kategori || ""; 
-                    }
-
-                    // --- LOGIKA PENGELOMPOKAN (GROUPING) ---
-                    const groupKey = `${tglFormatted}_${namaBarangUpper}_${hargaJual}_${pelanggan}_${invoiceItem}`;
-
-                    if (!groupedItems[groupKey]) {
-                        groupedItems[groupKey] = {
-                            tanggal: tglFormatted,
-                            pelanggan: pelanggan,
-                            invoice: invoiceItem,
-                            nama_barang: item.nama,
-                            kategori: kategori,
-                            harga_reseller: hargaReseller, 
-                            harga_jual: hargaJual,         
-                            qty: 0,
-                            subtotal: 0,
-                            ket: "", 
-                            id_transaksi_list: new Set() 
-                        };
-                    }
-
-                    // Tambahkan Qty, Subtotal, dan ID Transaksi ke dalam grup yang sama
-                    groupedItems[groupKey].qty += qty;
-                    groupedItems[groupKey].subtotal += subtotal;
-                    groupedItems[groupKey].id_transaksi_list.add(t.id);
-                });
-            }
-        });
-
-        // Ubah dari Object Grouping kembali menjadi Array
-        let flatItems = Object.values(groupedItems);
-
-        // --- LOGIKA PENGURUTAN (SORTING) NAMA PELANGGAN ---
-        flatItems.sort((a, b) => {
-            // 1. Urutkan berdasarkan Tanggal lebih dulu (agar Omset Harian tetap rapi)
-            if (a.tanggal < b.tanggal) return -1;
-            if (a.tanggal > b.tanggal) return 1;
-            
-            // 2. Jika tanggalnya sama, baru urutkan berdasarkan Nama Pelanggan (Abjad)
-            const pelA = (a.pelanggan || "").toLowerCase();
-            const pelB = (b.pelanggan || "").toLowerCase();
-            return pelA.localeCompare(pelB);
-        });
-
-        if (flatItems.length === 0) {
-            if (typeof showLoading === 'function') showLoading(false);
-            alert('Tidak ada rincian penjualan yang valid untuk diekspor pada rentang ini.');
-            return;
-        }
-
-        // ========================================================
-        // 4. GENERATE EXCEL (ExcelJS)
-        // ========================================================
-        const workbook = new ExcelJS.Workbook();
-        const sheet = workbook.addWorksheet('Rekapan Penjualan');
-
-        const headers = [
-            "No", "Periode", "Total Omset", "Barang", "Harga Reseller", 
-            "Harga Jual", "Jumlah", "Total", "LOT", "Ket", 
-            "Follow Up", "Invoice", "ID_Transaksi"
-        ];
-        sheet.addRow(headers);
-        
-        sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-        sheet.getRow(1).fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'FF4F81BD' }
-        };
-
-        const insertedOmsetDates = new Set();
-        let lastNo = 0; 
-
-        flatItems.forEach(item => {
-            let omsetBarisIni = '';
-            
-            if (!insertedOmsetDates.has(item.tanggal)) {
-                omsetBarisIni = omsetPerTanggal[item.tanggal];
-                insertedOmsetDates.add(item.tanggal);
-            }
-            
-            lastNo++;
-            
-            // Gabungkan ID Transaksi menjadi satu string dipisahkan koma
-            const gabunganIdTransaksi = Array.from(item.id_transaksi_list).join(', ');
-
-            sheet.addRow([
-                lastNo,                // No
-                item.tanggal,          // Periode
-                omsetBarisIni,         // Total Omset
-                item.nama_barang,      // Barang
-                item.harga_reseller,   // Harga Reseller
-                item.harga_jual,       // Harga Jual
-                item.qty,              // Jumlah 
-                item.subtotal,         // Total 
-                item.kategori,         // LOT
-                item.ket,              // Ket
-                item.pelanggan,        // Follow Up (Nama Pelanggan yang kini berurut)
-                item.invoice,          // Invoice
-                gabunganIdTransaksi    // ID_Transaksi 
-            ]);
-        });
-
-        // --- FORMATTING ANGKA (Ribuan) ---
-        sheet.eachRow((row, rowNumber) => {
-            if (rowNumber > 1) {
-                [3, 5, 6, 7, 8].forEach(colIndex => {
-                    const cell = row.getCell(colIndex);
-                    if (cell.value !== '' && cell.value !== null) {
-                        cell.numFmt = '#,##0'; 
-                    }
-                });
-            }
-        });
-
-        // --- PENYESUAIAN LEBAR KOLOM ---
-        sheet.getColumn(1).width = 5;   // No
-        sheet.getColumn(2).width = 15;  // Periode
-        sheet.getColumn(3).width = 15;  // Total Omset
-        sheet.getColumn(4).width = 35;  // Barang
-        sheet.getColumn(5).width = 15;  // Harga Reseller
-        sheet.getColumn(6).width = 15;  // Harga Jual
-        sheet.getColumn(7).width = 10;  // Jumlah
-        sheet.getColumn(8).width = 15;  // Total
-        sheet.getColumn(9).width = 15;  // LOT
-        sheet.getColumn(10).width = 15; // Ket
-        sheet.getColumn(11).width = 25; // Follow Up
-        sheet.getColumn(12).width = 15; // Invoice
-        sheet.getColumn(13).width = 25; // ID_Transaksi
-
-        // Proteksi Sheet
-        await sheet.protect('muflih123456', {
-            selectLockedCells: true,
-            selectUnlockedCells: true
-        });
-
-        const now = new Date();
-        const timestamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
-        const fileName = `Rekapan_Penjualan_${timestamp}.xlsx`;
-
-        const buffer = await workbook.xlsx.writeBuffer();
-        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-        saveAs(blob, fileName);
-
-        if (typeof showLoading === 'function') showLoading(false);
-
-    } catch (error) {
-        if (typeof showLoading === 'function') showLoading(false);
-        console.error("Terjadi kesalahan saat membuat Excel: ", error);
-        alert("Gagal mendownload Excel. Cek console browser untuk detail.");
-    }
-}
-
-// Anda bisa memanggil fungsi ini dari tombol di UI
-async function prosesRekapanKeExcelDanSheet(items, dataPiutangDariSupabase = []) {
-    try {
-        if (!items || items.length === 0) {
-            alert("Tidak ada data untuk direkap.");
-            return;
-        }
-
-        if (typeof showLoading === 'function') showLoading(true);
-
-        // --- 1. Ambil Data Referensi Piutang ---
-        const mapPiutang = {};
-        dataPiutangDariSupabase.forEach(p => {
-            mapPiutang[p.id_transaksi] = { dp: parseFloat(p.dp) || 0 };
-        });
-
-        // --- 2. Kelompokkan Data (Grouping) ---
-        const groupedMap = {};
-        const omsetPerTanggal = {};
-        const trxCheckedForOmset = new Set();
-        let lastNo = 0;
-
-        items.forEach(item => {
-            const dateStr = item.tanggal || new Date().toISOString().split('T')[0];
-            let ketBayar = "";
-            
-            // PERUBAHAN: Mengubah teks menjadi "Belum lunas" jika DP 0
-            if (mapPiutang[item.id_transaksi] && mapPiutang[item.id_transaksi].dp === 0) {
-                ketBayar = "Belum lunas";
-            }
-
-            const key = `${dateStr}_${item.barang}_${item.harga_jual}_${item.pelanggan}_${ketBayar}`;
-            
-            if (!groupedMap[key]) {
-                groupedMap[key] = {
-                    tanggal: dateStr,
-                    barang: item.barang,
-                    kategori: item.kategori || "", // Akan dicetak sebagai LOT
-                    harga_reseller: item.harga_reseller || item.hargaReseller || 0, // Fallback camelCase & underscore
-                    pelanggan: item.pelanggan,     // Akan dicetak sebagai Follow Up
-                    harga_jual: item.harga_jual,
-                    ketBayar: ketBayar,
-                    qty: 0,
-                    subtotal: 0,
-                    invoice: item.invoice || "",
-                    id_transaksi_list: new Set(),
-                };
-            }
-            
-            groupedMap[key].qty += parseFloat(item.qty) || 0;
-            groupedMap[key].subtotal += parseFloat(item.subtotal) || 0;
-            groupedMap[key].id_transaksi_list.add(item.id_transaksi);
-
-            // --- 3. Hitung Omset Eksklusif Per Tanggal ---
-            if (!trxCheckedForOmset.has(item.id_transaksi)) {
-                trxCheckedForOmset.add(item.id_transaksi);
-                if (!omsetPerTanggal[dateStr]) omsetPerTanggal[dateStr] = 0;
+        // Pengelompokan Barang
+        if (Array.isArray(items) && items.length > 0) {
+            items.forEach((item) => {
+                const hargaJual = parseFloat(item.harga) || 0;
+                const qty = parseFloat(item.qty) || 0;
+                const namaBarang = (item.nama || '').toUpperCase().trim();
+                const invoiceItem = item.invoice || '';
                 
-                const t = item.originalTrx || {};
-                let totalTagihan = 0;
-                
-                try {
-                    const detailItems = typeof t.detail === 'string' ? JSON.parse(t.detail) : (t.detail || []);
-                    if (Array.isArray(detailItems)) {
-                        totalTagihan = detailItems.reduce((sum, d) => sum + ((parseFloat(d.qty) || 0) * (parseFloat(d.harga) || 0)), 0);
-                    }
-                } catch(e) {}
-                
-                let trxOmset = 0;
-                if (totalTagihan > 0) {
-                    const diskon = parseFloat(t.diskon) || 0;
-                    trxOmset = totalTagihan - diskon;
-                } else {
-                    trxOmset = parseFloat(t.masuk) || parseFloat(t.keluar) || 0;
+                const masterData = masterArray.find(p => (p.nama || '').trim() === namaBarang);
+                const hargaReseller = masterData ? (parseFloat(masterData.harga_reseller) || 0) : 0;
+                const kategori = masterData ? (masterData.kategori || "") : "";
+
+                const key = `${dateStr}_${namaBarang}_${hargaJual}_${pelanggan}_${invoiceItem}_${ketBayar}`;
+
+                if (!groupedMap[key]) {
+                    groupedMap[key] = {
+                        tanggal: dateStr, barang: item.nama, kategori, harga_reseller: hargaReseller, 
+                        harga_jual: hargaJual, qty: 0, subtotal: 0, ketBayar, 
+                        pelanggan, invoice: invoiceItem, id_transaksi_list: new Set(),
+                    };
                 }
-                
-                omsetPerTanggal[dateStr] += trxOmset;
-            }
-        });
-
-        // --- 4. Susun Baris (Array 2D) ---
-        const rowsToAppend = [];
-        const groupedArray = Object.values(groupedMap);
-        groupedArray.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
-        const insertedOmsetDates = new Set();
-
-        groupedArray.forEach(group => {
-            lastNo++;
-            let omsetValue = "";
-            if (!insertedOmsetDates.has(group.tanggal)) {
-                omsetValue = omsetPerTanggal[group.tanggal] || 0;
-                insertedOmsetDates.add(group.tanggal);
-            }
-
-            const idTransaksiStr = Array.from(group.id_transaksi_list).join(", ");
-
-            // PERUBAHAN: Menyesuaikan urutan baris dengan Header Baru
-            rowsToAppend.push([
-                lastNo,               // No
-                group.tanggal,        // Periode
-                omsetValue,           // Total Omset
-                group.barang,         // Barang
-                group.harga_reseller, // Harga Reseller
-                group.harga_jual,     // Harga Jual
-                group.qty,            // Jumlah
-                group.subtotal,       // Total
-                group.kategori,       // LOT (diambil dari kategori)
-                group.ketBayar,       // Ket ("Belum lunas" dll)
-                group.pelanggan,      // Follow Up (diambil dari pelanggan)
-                group.invoice,        // Invoice
-                idTransaksiStr        // ID_Transaksi
-            ]);
-        });
-
-        // --- 5. EKSPOR KE EXCEL (FRONTEND) ---
-        await buatDanUnduhExcel(rowsToAppend);
-
-        if (typeof showLoading === 'function') showLoading(false);
-        alert("Data berhasil diproses dan Excel telah diunduh.");
-
-    } catch (error) {
-        if (typeof showLoading === 'function') showLoading(false);
-        console.error(error);
-        alert("Terjadi kesalahan saat memproses data: " + error.message);
-    }
-}
-
-// Fungsi Bantuan untuk Generate Excel menggunakan ExcelJS
-async function buatDanUnduhExcel(rows) {
-    if (typeof ExcelJS === 'undefined') {
-        alert("Library ExcelJS tidak dimuat.");
-        return;
-    }
-
-    const workbook = new ExcelJS.Workbook();
-    const sheet = workbook.addWorksheet('Rekapan Harian');
-
-    // PERUBAHAN: Update susunan & nama header sesuai permintaan
-    const headers = [
-        "No", "Periode", "Total Omset", "Barang", "Harga Reseller", 
-        "Harga Jual", "Jumlah", "Total", "LOT", "Ket", 
-        "Follow Up", "Invoice", "ID_Transaksi"
-    ];
-    
-    sheet.addRow(headers);
-    
-    // Styling Header
-    sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-    sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
-
-    // Masukkan Data
-    rows.forEach(row => {
-        sheet.addRow(row);
+                groupedMap[key].qty += qty;
+                groupedMap[key].subtotal += (hargaJual * qty);
+                groupedMap[key].id_transaksi_list.add(t.id);
+            });
+        }
     });
 
-    // Formatting Angka (Mata Uang / Ribuan)
-    sheet.eachRow((row, rowNumber) => {
-        if (rowNumber > 1) {
-            // Kolom yg butuh format ribuan: Total Omset (3), Harga Reseller (5), Harga Jual (6), Jumlah (7), Total (8)
-            [3, 5, 6, 7, 8].forEach(colIndex => {
-                const cell = row.getCell(colIndex);
-                if (cell.value !== '' && cell.value !== null) {
-                    cell.numFmt = '#,##0'; 
+    // Urutkan Array (Tanggal, lalu Nama Pelanggan)
+    const groupedArray = Object.values(groupedMap).sort((a, b) => {
+        if (a.tanggal !== b.tanggal) return a.tanggal.localeCompare(b.tanggal);
+        return (a.pelanggan || "").localeCompare(b.pelanggan || "");
+    });
+
+    if (groupedArray.length === 0) return null;
+
+    // Susun menjadi Array 2D
+    const rowsToAppend = [];
+    const insertedOmsetDates = new Set();
+    let lastNo = 0;
+
+    groupedArray.forEach(group => {
+        lastNo++;
+        let omsetValue = "";
+        if (!insertedOmsetDates.has(group.tanggal)) {
+            omsetValue = omsetPerTanggal[group.tanggal] || 0;
+            insertedOmsetDates.add(group.tanggal);
+        }
+        
+        rowsToAppend.push([
+            lastNo, group.tanggal, omsetValue, group.barang, group.harga_reseller, 
+            group.harga_jual, group.qty, group.subtotal, group.kategori, 
+            group.ketBayar, group.pelanggan, group.invoice, 
+            Array.from(group.id_transaksi_list).join(", ")
+        ]);
+    });
+
+    return rowsToAppend;
+}
+
+window.kirimRekapanKeSpreadsheet = async function() {
+    const filtered = window.currentFilteredTransactions || [];
+    if (filtered.length === 0) return alert('Tidak ada data rincian penjualan yang valid!');
+
+    const tanggalTerdampak = new Set();
+    let adaYangBaru = false;
+
+    // 1. Identifikasi tanggal khusus mana saja yang memiliki item baru (belum terkunci)
+    filtered.forEach(t => {
+        if (t.kat === 'BATAL' || t.kat === 'DIHAPUS' || t.kat === 'CANCEL ORDER') return;
+        if ((t.kat || '').toUpperCase() !== 'PENJUALAN') return;
+
+        const tglRaw = (t.waktu || "").split(/[T ]/)[0];
+        const dateStr = typeof formatDateText === 'function' ? formatDateText(tglRaw) : tglRaw;
+
+        let items = [];
+        try { items = typeof t.detail === 'string' ? JSON.parse(t.detail) : t.detail; } catch(e){}
+        if (Array.isArray(items)) {
+            items.forEach(item => {
+                if (!item.isLocked) {
+                    adaYangBaru = true;
+                    tanggalTerdampak.add(dateStr);
                 }
             });
         }
     });
 
-    // Sesuaikan Lebar Kolom
-    sheet.columns.forEach(column => {
-        let maxLength = 0;
-        column["eachCell"]({ includeEmpty: true }, function (cell) {
-            let columnLength = cell.value ? cell.value.toString().length : 10;
-            if (columnLength > maxLength) {
-                maxLength = columnLength;
-            }
-        });
-        column.width = maxLength < 10 ? 10 : maxLength + 2;
-    });
-
-    // Proses Download
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    saveAs(blob, `Rekapan_Harian_${new Date().getTime()}.xlsx`);
-}
-
-async function salinRekapanKeClipboard() {
-    try {
-        const filtered = window.currentFilteredTransactions || [];
-        
-        if (filtered.length === 0) {
-            alert('Tidak ada data rekapan penjualan untuk disalin!');
-            return;
-        }
-
-        if (typeof showLoading === 'function') showLoading(true);
-      
-        const trxProcessedForOmset = new Set();
-        const omsetPerTanggal = {}; 
-        const groupedItems = {}; 
-
-        const sortedTransactions = [...filtered].sort((a, b) => {
-            const tA = a.waktu || "";
-            const tB = b.waktu || "";
-            return tA > tB ? 1 : (tA < tB ? -1 : 0); 
-        });
-
-        sortedTransactions.forEach(t => {
-            if (t.kat === 'BATAL' || t.kat === 'DIHAPUS' || t.kat === 'CANCEL ORDER') return;
-            if ((t.kat || '').toUpperCase() !== 'PENJUALAN') return;
-
-            const tglRaw = t.waktu.split(/[T ]/)[0];
-            const tglFormatted = typeof formatDateText === 'function' ? formatDateText(tglRaw) : tglRaw;
-            const pelanggan = t.sub && t.sub !== '-' ? t.sub : 'UMUM';
-            const diskon = parseFloat(t.diskon) || 0;
-
-            let items = [];
-            try { items = typeof t.detail === 'string' ? JSON.parse(t.detail) : t.detail; } catch(e){}
-
-            let trxOmset = 0;
-            if (Array.isArray(items) && items.length > 0) {
-                const totalTagihan = items.reduce((sum, item) => sum + ((parseFloat(item.qty) || 0) * (parseFloat(item.harga) || 0)), 0);
-                trxOmset = totalTagihan - diskon;
-            } else {
-                const nom = (parseFloat(t.masuk) > 0 ? parseFloat(t.masuk) : parseFloat(t.keluar)) || 0;
-                trxOmset = nom - diskon;
-            }
-
-            if (!omsetPerTanggal[tglFormatted]) omsetPerTanggal[tglFormatted] = 0;
-            
-            if (!trxProcessedForOmset.has(t.id)) {
-                omsetPerTanggal[tglFormatted] += trxOmset;
-                trxProcessedForOmset.add(t.id);
-            }
-
-            if (Array.isArray(items) && items.length > 0) {
-                items.forEach((item) => {
-                    const hargaJual = parseFloat(item.harga) || 0;
-                    const qty = parseFloat(item.qty) || 0;
-                    const subtotal = hargaJual * qty;
-                    const namaBarangUpper = (item.nama || '').toUpperCase().trim();
-                    const invoiceItem = item.invoice || '-';
-                    
-                    let hargaReseller = 0;
-                    let kategori = ""; 
-                    
-                    const masterArray = typeof productMaster !== 'undefined' ? productMaster : (window.productMaster || []);
-                    const masterData = masterArray.find(p => (p.nama || '').trim() === namaBarangUpper);
-
-                    if (masterData) {
-                        hargaReseller = parseFloat(masterData.harga_reseller) || 0;
-                        kategori = masterData.kategori || ""; 
-                    }
-
-                    const groupKey = `${tglFormatted}_${namaBarangUpper}_${hargaJual}_${pelanggan}_${invoiceItem}`;
-
-                    if (!groupedItems[groupKey]) {
-                        groupedItems[groupKey] = {
-                            tanggal: tglFormatted,
-                            pelanggan: pelanggan,
-                            invoice: invoiceItem,
-                            nama_barang: item.nama,
-                            kategori: kategori,
-                            harga_reseller: hargaReseller, 
-                            harga_jual: hargaJual,         
-                            qty: 0,
-                            subtotal: 0,
-                            ket: "", 
-                            id_transaksi_list: new Set() 
-                        };
-                    }
-
-                    groupedItems[groupKey].qty += qty;
-                    groupedItems[groupKey].subtotal += subtotal;
-                    groupedItems[groupKey].id_transaksi_list.add(t.id);
-                });
-            }
-        });
-
-        let flatItems = Object.values(groupedItems);
-        flatItems.sort((a, b) => {
-            if (a.tanggal < b.tanggal) return -1;
-            if (a.tanggal > b.tanggal) return 1;
-            const pelA = (a.pelanggan || "").toLowerCase();
-            const pelB = (b.pelanggan || "").toLowerCase();
-            return pelA.localeCompare(pelB);
-        });
-
-        if (flatItems.length === 0) {
-            if (typeof showLoading === 'function') showLoading(false);
-            alert('Tidak ada rincian penjualan untuk disalin.');
-            return;
-        }
-
-        // --- PROSES MEMBENTUK TEKS UNTUK CLIPBOARD (TANPA HEADER) ---
-        const insertedOmsetDates = new Set();
-        let lastNo = 0; 
-        let clipboardText = "";
-
-        flatItems.forEach(item => {
-            let omsetBarisIni = '';
-            
-            if (!insertedOmsetDates.has(item.tanggal)) {
-                omsetBarisIni = omsetPerTanggal[item.tanggal];
-                insertedOmsetDates.add(item.tanggal);
-            }
-            
-            lastNo++;
-            const gabunganIdTransaksi = Array.from(item.id_transaksi_list).join(', ');
-
-            // Susun baris menggunakan tab (\t) agar saat dipaste ke Excel otomatis pindah kolom
-            const rowArray = [
-                lastNo,
-                item.tanggal,
-                omsetBarisIni,
-                item.nama_barang,
-                item.harga_reseller,
-                item.harga_jual,
-                item.qty,
-                item.subtotal,
-                item.kategori,
-                item.ket,
-                item.pelanggan,
-                item.invoice,
-                gabunganIdTransaksi
-            ];
-
-            // Gabungkan elemen dengan Tab, lalu akhiri dengan Enter (Baris Baru)
-            clipboardText += rowArray.join("\t") + "\n";
-        });
-
-        // Salin ke Clipboard perangkat
-        await navigator.clipboard.writeText(clipboardText);
-
-        if (typeof showLoading === 'function') showLoading(false);
-        alert("Data berhasil disalin! Silakan Paste (Ctrl+V) di file Excel Anda.");
-
-    } catch (error) {
-        if (typeof showLoading === 'function') showLoading(false);
-        console.error("Terjadi kesalahan saat menyalin data: ", error);
-        alert("Gagal menyalin data. Pastikan browser Anda mengizinkan akses Clipboard.");
+    // 2. Blokir jika tidak ada satupun item baru
+    if (!adaYangBaru) {
+        return alert('PERHATIAN: Semua item sudah terkunci (sudah dikirim sebelumnya). Data hanya dapat dikirim jika ada item baru/belum terkunci pada tanggal tersebut.');
     }
-}
+
+    // 3. Ambil baris rekapan HANYA KHUSUS untuk tanggal yang diizinkan (tanggalTerdampak)
+    const rows = getProcessedRekapanRows(tanggalTerdampak);
+    if (!rows || rows.length === 0) return alert('Tidak ada data rincian penjualan yang valid untuk dikirim!');
+
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwIG-jW3-6rVjrPMc2Fb3Bkppf_weFu-SRfZrKKiVK3CmQ3eK2wWFd-HTdyecNVIH1FSg/exec"; 
+
+    if (typeof showLoading === 'function') showLoading(true);
+    try {
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(rows)
+        });
+        const result = await response.json();
+        
+        if (result.status === 'success') {
+            
+            // 4. PROSES PENGUNCIAN ITEM DI DATABASE SUPABASE
+            const trxUpdatesPayload = [];
+            const pendingMemoryUpdates = [];
+            
+            filtered.forEach(t => {
+                if (t.kat === 'BATAL' || t.kat === 'DIHAPUS' || t.kat === 'CANCEL ORDER') return;
+                if ((t.kat || '').toUpperCase() !== 'PENJUALAN') return;
+                
+                const tglRaw = (t.waktu || "").split(/[T ]/)[0];
+                const dateStr = typeof formatDateText === 'function' ? formatDateText(tglRaw) : tglRaw;
+                
+                // Pastikan hanya mengunci item pada tanggal yang diizinkan dikirim
+                if (tanggalTerdampak.has(dateStr)) {
+                    let target = allTransactions.find(x => x.id === t.id);
+                    if (target) {
+                        let items = [];
+                        const isString = typeof target.detail === 'string';
+                        try { items = JSON.parse(isString ? target.detail : JSON.stringify(target.detail)); } catch(e) {}
+                        
+                        let changed = false;
+                        if (Array.isArray(items)) {
+                            items.forEach(item => {
+                                if (!item.isLocked) {
+                                    item.isLocked = true;
+                                    changed = true;
+                                }
+                            });
+                        }
+                        
+                        if (changed) {
+                            trxUpdatesPayload.push({
+                                id: target.id,
+                                new_detail: items
+                            });
+                            pendingMemoryUpdates.push({
+                                target: target,
+                                isString: isString,
+                                newItems: items
+                            });
+                        }
+                    }
+                }
+            });
+            
+            // Simpan perubahan kunci (isLocked) ke server Supabase
+            if (trxUpdatesPayload.length > 0) {
+                const { error: rpcError } = await supabaseClient.rpc('set_invoice', { 
+                    payload: { action: 'set_invoice', updates: trxUpdatesPayload } 
+                });
+                if (rpcError) console.warn("Gagal mengunci transaksi di Supabase.", rpcError);
+            }
+            
+            // Aplikasikan status terkunci secara instan di UI lokal
+            pendingMemoryUpdates.forEach(update => {
+                update.target.detail = update.isString ? JSON.stringify(update.newItems) : update.newItems;
+            });
+            
+            // ==========================================
+            // 5. FITUR TAMBAHAN: AUTO-COPY KE CLIPBOARD
+            // ==========================================
+            let copyStatusText = "otomatis disalin ke clipboard";
+            try {
+                // Menggabungkan baris dengan Tab (\t) dan baris baru (\n)
+                const clipboardText = rows.map(row => row.join("\t")).join("\n");
+                
+                // Eksekusi fungsi copy (menggunakan API navigator.clipboard)
+                await navigator.clipboard.writeText(clipboardText);
+            } catch (copyErr) {
+                console.warn("Gagal menyalin otomatis ke clipboard: ", copyErr);
+                copyStatusText = "namun penyalinan otomatis gagal (izin clipboard ditolak browser)";
+            }
+
+            renderTransactions(); // Refresh UI layar untuk menampilkan ikon gembok
+            
+            // Tampilkan Alert final dengan informasi bahwa data telah disalin
+            alert(`Berhasil! Data rekapan harian sukses dikirim ke Spreadsheet, ${copyStatusText}, dan item telah dikunci.`);
+        } else {
+            alert('Gagal mengirim: ' + result.message);
+        }
+    } catch (error) {
+        console.error(error);
+        alert("Gagal memproses pengiriman: " + error.message);
+    } finally {
+        if (typeof showLoading === 'function') showLoading(false);
+    }
+};
+
+window.salinRekapanKeClipboard = async function() {
+    const rows = getProcessedRekapanRows();
+    if (!rows) return alert('Tidak ada data rekapan penjualan untuk disalin!');
+
+    if (typeof showLoading === 'function') showLoading(true);
+    try {
+        // Menggabungkan baris dengan Tab (\t) dan baris baru (\n)
+        const clipboardText = rows.map(row => row.join("\t")).join("\n");
+        await navigator.clipboard.writeText(clipboardText);
+        alert("Data berhasil disalin! Silakan Paste (Ctrl+V) di file Anda.");
+    } catch (error) {
+        console.error(error);
+        alert("Gagal menyalin data. Pastikan browser Anda mengizinkan akses Clipboard.");
+    } finally {
+        if (typeof showLoading === 'function') showLoading(false);
+    }
+};
 
 function formatSupabaseData(supabaseData) {
   return supabaseData.map(data => ({
