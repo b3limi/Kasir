@@ -8649,6 +8649,35 @@ function checkAppVersionOnWake() {
     }
 }
 
+// ==========================================
+// TAMBAHAN: KOREKSI SCROLL SAAT HP BANGUN DARI SLEEP / TERKUNCI
+// ==========================================
+function pastikanTombolPintasTerlihat() {
+  const actionWrapper = document.getElementById('pintas-action-wrapper');
+  const isModePintas = document.body.classList.contains('mode-pintas-active');
+  
+  // Syarat: Kursor masih di QTY, layar HP (<768px), dan Mode Pintas aktif
+  if (document.activeElement && document.activeElement.classList.contains('qty-input') && window.innerWidth < 768 && isModePintas) {
+    setTimeout(() => {
+      if (actionWrapper) {
+        actionWrapper.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }
+    }, 400); // Jeda sedikit lebih lama (400ms) karena proses bangun dari sleep lebih berat
+  }
+}
+
+// Deteksi saat layar HP kembali menyala (aplikasi kembali terbuka)
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    pastikanTombolPintasTerlihat();
+  }
+});
+
+// Deteksi saat ukuran layar berubah (keyboard dimunculkan ulang oleh sistem operasi)
+window.addEventListener("resize", () => {
+  pastikanTombolPintasTerlihat();
+});
+
 
 
   </script>
