@@ -41,7 +41,7 @@
   body.mode-pintas-active #pintas-action-wrapper {
     position: -webkit-sticky;
     position: sticky;
-    bottom: 100px; /* Menyesuaikan dengan tinggi navigasi bawah (bottom bar) */
+    bottom: 60px; /* Menyesuaikan dengan tinggi navigasi bawah (bottom bar) */
     z-index: 50;
     background-color: #f8fafc; 
     padding-top: 12px;
@@ -343,25 +343,7 @@ display: block !important;
     </div>
 
      <div class="space-y-4">
-      <button onclick="selectShop('Muflih Print', 'Jl. Barawaja No. 19, Makassar')" 
-              class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95">
-        <div class="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">M</div>
-        <div class="text-left">
-          <p class="font-bold text-white group-hover:text-blue-400 transition">Muflih Print</p>
-          <p class="text-xs text-slate-400">Jl. Barawaja No. 19, Makassar</p>
-        </div>
-      </button>
-
-      <button onclick="selectShop('Vi Printing', 'Jl. Rappokalling Raya, Makassar')" 
-              class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95">
-        <div class="w-12 h-12 bg-purple-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">V</div>
-        <div class="text-left">
-          <p class="font-bold text-white group-hover:text-blue-400 transition">Vi Printing</p>
-          <p class="text-xs text-slate-400">Jl. Rappokalling Raya, Makassar</p>
-        </div>
-      </button>
-
-      <!-- TAMBAHAN: Tombol BLIMI -->
+            <!-- TAMBAHAN: Tombol BLIMI -->
       <button onclick="selectShop('BLIMI', 'Jl. Kumala No. 05, Makassar')" 
               class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95 mt-2">
         <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">B</div>
@@ -4731,19 +4713,18 @@ function changeTab(tab) {
 
         menuContainer.innerHTML = `
           <div class="space-y-4 page-transition">
-            <h2 class="text-xl font-bold flex items-center gap-2">
-              <i data-lucide="shopping-cart" class="w-5 text-blue-600"></i> Penjualan Baru
-            </h2>
+            <div class="flex justify-between items-center">
+              <h2 class="text-xl font-bold flex items-center gap-2">
+                <i data-lucide="shopping-cart" class="w-5 text-blue-600"></i> Penjualan Baru
+              </h2>
 
-            ${currentShop.nama === 'BLIMI' ? `
-            <div class="flex items-center justify-between bg-slate-50 p-1.5 border border-slate-200 rounded-xl shadow-sm">
-                <span class="text-[10px] font-bold text-slate-500 ml-2 uppercase tracking-widest">Mode Input</span>
-                <div class="flex bg-slate-200 p-1 rounded-lg">
-                    <button onclick="setBlimiMode(false)" id="btn-mode-standar" class="px-4 py-1.5 text-[10px] font-bold rounded-md ${!window.blimiModePintas ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'} transition-all">STANDAR</button>
-                    <button onclick="setBlimiMode(true)" id="btn-mode-pintas" class="px-4 py-1.5 text-[10px] font-bold rounded-md ${window.blimiModePintas ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'} transition-all">PINTAS</button>
-                </div>
+              ${currentShop.nama === 'BLIMI' ? `
+              <div class="flex bg-slate-200 p-1 rounded-lg shadow-sm">
+                  <button onclick="setBlimiMode(false)" id="btn-mode-standar" class="px-4 py-1.5 text-[10px] font-bold rounded-md ${!window.blimiModePintas ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'} transition-all">STANDAR</button>
+                  <button onclick="setBlimiMode(true)" id="btn-mode-pintas" class="px-4 py-1.5 text-[10px] font-bold rounded-md ${window.blimiModePintas ? 'bg-white shadow text-blue-600' : 'text-slate-500 hover:text-slate-700'} transition-all">PINTAS</button>
+              </div>
+              ` : ''}
             </div>
-            ` : ''}
             
             <div id="section-pilih-pelanggan" class="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
               <label class="block text-gray-700 text-sm font-bold mb-1">Pilih / Cari Pelanggan</label>
