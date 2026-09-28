@@ -5906,7 +5906,7 @@ async function runScript(actionName, payload, stayInTab) {
 }
 
 function savePenjualan() {
-  tutupKonfirmasi
+ tutupKonfirmasi();
   if (currentShop.nama === 'ADMINISTRATOR') {
     return alert("Aksi Ditolak: Administrator hanya memiliki akses untuk melihat riwayat dan memantau laporan. Silakan ganti identitas (login) ke toko Muflih Print atau Vi Printing untuk melakukan transaksi.");
   }
