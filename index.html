@@ -538,7 +538,7 @@
 
   <script>
  
-const CURRENT_APP_VERSION = "2026.09.21-v3";
+const CURRENT_APP_VERSION = "2026.09.21-v3.1";
 let allTransactions = [];
 
 // --- VARIABEL MODE PINTAS BLIMI ---
@@ -5292,6 +5292,15 @@ function changeTab(tab) {
                
                <div class="flex flex-col justify-center items-center gap-2 opacity-70 mt-2">
                   <img src="LOGO MUFLIH.webp" alt="Logo Muflih Print" class="h-10 w-auto object-contain">
+                  
+                  <!-- TAMBAHAN: TAMPILAN VERSI APLIKASI -->
+                  <div class="flex items-center gap-1.5">
+                    <i data-lucide="info" class="w-3 h-3 text-slate-400"></i>
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      Versi: <span class="font-bold text-slate-600">${CURRENT_APP_VERSION}</span> <span class="font-normal">(DB: ${versionText})</span>
+                    </span>
+                  </div>
+                  
                   <div class="flex items-center gap-1.5">
                     <i data-lucide="code" class="w-3 h-3 text-slate-400"></i>
                     <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
