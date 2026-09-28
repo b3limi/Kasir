@@ -272,6 +272,21 @@
         margin-top: 0 !important;
       }
     }
+
+    @keyframes blinkHighlight {
+  0%, 100% { 
+    background-color: #eff6ff; /* bg-blue-50 */
+    box-shadow: 0 0 0 4px #60a5fa; /* ring-4 ring-blue-400 */
+  }
+  50% { 
+    background-color: #dbeafe; /* bg-blue-100 lebih terang */
+    box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.2); 
+  }
+}
+
+.animate-blink-3 {
+  animation: blinkHighlight 1.2s ease-in-out 3; /* Durasi diperlambat menjadi 1.2 detik per kedipan */
+}
 </style>
 </head>
 <body class="pb-safe">
@@ -286,7 +301,7 @@
     </div>
 
      <div class="space-y-4">
-           <!-- TAMBAHAN: Tombol BLIMI -->
+            <!-- TAMBAHAN: Tombol BLIMI -->
       <button onclick="selectShop('BLIMI', 'Jl. Kumala No. 05, Makassar')" 
               class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95 mt-2">
         <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">B</div>
@@ -733,6 +748,12 @@ function pilihPelangganManual() {
 }
 
 function addItem(autoOpen = true) {
+  // === HILANGKAN EFEK KEDIP SAAT TOMBOL TAMBAH DITEKAN ===
+  document.querySelectorAll('[id^="item-"]').forEach(el => {
+    el.classList.remove('animate-blink-3');
+  });
+  // =======================================================
+
   const id = Date.now();
   const div = document.createElement('div');
   div.id = `item-${id}`;
@@ -816,20 +837,7 @@ function closeProductModal(e) {
   if (!e || e.target.id === 'product-modal') {
     // 1. Tutup modal terlebih dahulu
     document.getElementById('product-modal').style.display = 'none';
-
-    // 2. Beri jeda sedikit agar browser selesai merender perubahan layout
-    setTimeout(() => {
-      // Ambil container barang yang benar sesuai dengan fungsi addItem
-      const containerBarang = document.getElementById('itemContainer'); 
-      
-      // Pastikan container ada dan memiliki setidaknya satu elemen anak (barang)
-      if (containerBarang && containerBarang.lastElementChild) {
-        containerBarang.lastElementChild.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' // Posisikan pas di tengah layar, aman dari tombol bawah
-        });
-      }
-    }, 100); 
+ 
   }
 }
 
@@ -5569,17 +5577,21 @@ function selectProduct(name, category, priceUmum, priceReseller) {
       qtyInput.focus();
       qtyInput.select(); // Langsung memblok angka
 
-      // Logika baru: Paksa layar scroll ke bawah agar tombol terlihat di atas keyboard
       setTimeout(() => {
-        const actionWrapper = document.getElementById('pintas-action-wrapper');
-        // Deteksi apakah Mode Pintas sedang aktif pada <body>
-        const isModePintas = document.body.classList.contains('mode-pintas-active');
-        
-        // Hanya eksekusi jika di HP (lebar < 768px) DAN Mode Pintas sedang menyala
-        if (actionWrapper && window.innerWidth < 768 && isModePintas) {
-          actionWrapper.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        const itemCard = document.getElementById(`item-${rowId}`);
+        if (itemCard) {
+          itemCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+          // === EFEK BERKEDIP SANGAT PELAN TIGA KALI ===
+          itemCard.classList.add('animate-blink-3');
+          
+          // Hapus kelas animasi setelah 3 putaran selesai (1.2s x 3 = 3600ms)
+          setTimeout(() => {
+            itemCard.classList.remove('animate-blink-3');
+          }, 3600);
+          // ===========================================
         }
-      }, 350); // Jeda 350ms menunggu animasi keyboard virtual selesai
+      }, 350); 
     }
   }, 100);
 }
