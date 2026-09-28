@@ -2440,7 +2440,14 @@ function getProcessedRekapanRows(allowedDates = null) {
 }
 
 window.kirimRekapanKeSpreadsheet = async function() {
-    const filtered = window.currentFilteredTransactions || [];
+  // 1. Tambahkan dialog konfirmasi di sini
+    const isConfirmed = confirm("Apakah Anda yakin ingin mengirim rekapan ini ke Spreadsheet? Item yang berhasil dikirim akan dikunci.");
+    
+    // 2. Jika pengguna menekan 'Batal' / 'Cancel', hentikan proses eksekusi
+    if (!isConfirmed) {
+        return; 
+    }  
+  const filtered = window.currentFilteredTransactions || [];
     if (filtered.length === 0) return alert('Tidak ada data rincian penjualan yang valid!');
 
     const tanggalTerdampak = new Set();
