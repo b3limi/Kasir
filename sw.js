@@ -1,5 +1,5 @@
 // UBAH NAMA CACHE INI SETIAP KALI ADA PEMBARUAN PADA HTML/CSS/JS
-const CACHE_NAME = 'kasir-cache-v5;
+const CACHE_NAME = 'kasir-cache-v6;
 const urlsToCache = [
   './',
   './index.html',
