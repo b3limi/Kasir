@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, interactive-widget=resizes-content">
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#2563eb">
   <title>Kasir & Arus Kas Modern</title>
@@ -17,67 +17,49 @@
   
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
     body { 
       font-family: 'Inter', sans-serif; 
       background-color: #f8fafc;
       -webkit-tap-highlight-color: transparent;
+      /* Penyesuaian batas aman (notch kamera) untuk semua perangkat */
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
     }
+    
     .nav-active { color: #2563eb !important; }
     .nav-active i { transform: translateY(-2px); transition: transform 0.2s; }
+    
     .page-transition { animation: fadeIn 0.3s ease-out; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
     .pb-safe { padding-bottom: calc(env(safe-area-inset-bottom) + 5.5rem); }
     input, select, textarea { font-size: 16px !important; }
     .accounting { text-align: right; font-family: monospace; }
 
-/* Penyesuaian batas aman (notch kamera) untuk semua perangkat */
-    body {
-      padding-left: env(safe-area-inset-left);
-      padding-right: env(safe-area-inset-right);
-    }
-
 @media (max-width: 767px) {
-  body.mode-pintas-active #pintas-action-wrapper {
-    position: fixed !important;
-    bottom: 130px !important; /* SILAKAN UBAH ANGKA INI: Semakin besar semakin naik */
+  body.mode-pintas-active #kasir-action-bar {
+    position: fixed; 
+    bottom: 60px; /* Dinaikkan sedikit ke 60px */
     left: 16px;
     right: 16px;
-    width: calc(100% - 32px) !important;
-    z-index: 99 !important;
-    background-color: #ffffff; 
-    padding: 12px;
-    border-radius: 16px;
-    box-shadow: 0 -10px 40px rgba(0,0,0,0.1); /* Memberikan bayangan agar terlihat melayang */
+    width: auto; 
+    z-index: 99; 
+    border-radius: 10px;
+    box-shadow: 0 -10px 30px rgba(0,0,0,0.1); 
+    transition: bottom 0.2s ease-out, padding 0.2s; 
   }
   
-  /* Memberikan ruang kosong ekstra di paling bawah halaman agar inputan tidak tertutup tombol yang melayang */
   body.mode-pintas-active #section-form-kasir {
-    padding-bottom: 120px !important; 
-  }
-
-  body.mode-pintas-active #pintas-action-wrapper::before {
-    display: none !important;
-  }
-}
-  
-@media (min-width: 768px) {
-  body.mode-pintas-active .qty-wrapper {
-    grid-column: span 12 / span 12 !important;
+    padding-bottom: 85px !important; /* Disesuaikan agar batas scroll aman */
   }
 }
 
-@media (min-width: 768px) {
-  body.mode-pintas-active .qty-wrapper {
-    grid-column: span 12 / span 12 !important;
-  }
-}
-
-/* CSS BARU UNTUK FULL WIDTH TOMBOL SIMPAN DI MODE PINTAS */
-body.mode-pintas-active .mode-pintas-full-width {
-  grid-column: 1 / -1 !important;
-}
-
-
+    /* TAMBAHKAN INI DI LUAR @MEDIA AGAR TAB SELALU AMAN DI IPHONE */
+    nav {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+      
     /* Aturan KHUSUS untuk Handphone Mode Landscape (Tinggi layar kurang dari 600px) */
     @media (orientation: landscape) and (max-height: 600px) {
       /* 1. Melebarkan area utama khusus di HP (mengurangi margin & padding) */
@@ -88,12 +70,8 @@ body.mode-pintas-active .mode-pintas-full-width {
       }
 
       /* 2. Memaksa baris tombol filter agar meregang sejajar penuh */
-      #riwayat-container .md\:w-auto {
-        width: 100% !important;
-      }
-      #riwayat-container .md\:flex-none {
-        flex: 1 1 0% !important;
-      }
+      #riwayat-container .md\:w-auto { width: 100% !important; }
+      #riwayat-container .md\:flex-none { flex: 1 1 0% !important; }
 
       /* 3. Menyesuaikan modal agar tetap rapi saat landscape */
       .modal-content {
@@ -101,76 +79,60 @@ body.mode-pintas-active .mode-pintas-full-width {
         margin-top: 10px;
       }
       
-      nav {
-        padding-bottom: env(safe-area-inset-bottom);
-      }
+      nav { padding-bottom: env(safe-area-inset-bottom); }
     }
 
-/* KHUSUS MODE PINTAS BLIMI */
-body.mode-pintas-active .hide-on-pintas {
-  display: none !important;
-}
-body:not(.mode-pintas-active) .show-on-pintas {
-  display: none !important;
-}
-body.mode-pintas-active .qty-wrapper {
-  grid-column: span 4 / span 4 !important;
-}
-@media (min-width: 768px) {
-  body.mode-pintas-active .qty-wrapper {
-    grid-column: span 12 / span 12 !important;
-  }
-}
+    /* KHUSUS MODE PINTAS BLIMI */
+    body.mode-pintas-active .hide-on-pintas { display: none !important; }
+    body:not(.mode-pintas-active) .show-on-pintas { display: none !important; }
+    
+    body.mode-pintas-active .qty-wrapper { grid-column: span 4 / span 4 !important; }
+    
+    /* CSS UNTUK FULL WIDTH TOMBOL SIMPAN DI MODE PINTAS */
+    body.mode-pintas-active .mode-pintas-full-width { grid-column: 1 / -1 !important; }
 
-/* Pastikan container saldo memiliki tinggi minimum yang konsisten */
-#balance-container {
-  min-height: 40px; /* Mengizinkan wadah membesar jika konten lebih dari 40px */
-  display: flex;
-  align-items: center; 
-  /* Hapus baris overflow: hidden; */
-}
+    /* Pastikan container saldo memiliki tinggi minimum yang konsisten */
+    #balance-container {
+      min-height: 40px; 
+      display: flex;
+      align-items: center; 
+    }
 
-/* Opsional: Memastikan skeleton tidak lebih tinggi dari teks asli */
-.animate-pulse {
-  display: flex;
-  align-items: flex-end;
-}    
-    /* Efek untuk tombol menu 'Lainnya' yang aktif */
-/* Style Tombol Aktif di Menu Lainnya */
-.action-btn-active {
-  background-color: #ffffff !important;
-  transform: scale(0.95);
-  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
-}
+    /* Opsional: Memastikan skeleton tidak lebih tinggi dari teks asli */
+    .animate-pulse { display: flex; align-items: flex-end; }    
+    
+    /* Style Tombol Aktif di Menu Lainnya */
+    .action-btn-active {
+      background-color: #ffffff !important;
+      transform: scale(0.95);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important;
+    }
 
-/* Garis bawah indikator untuk tombol aktif */
-.action-btn-active::after {
-  content: '';
-  position: absolute;
-  bottom: 6px;
-  width: 12px;
-  height: 3px;
-  border-radius: 99px;
-  background-color: currentColor;
-}
+    /* Garis bawah indikator untuk tombol aktif */
+    .action-btn-active::after {
+      content: '';
+      position: absolute;
+      bottom: 6px;
+      width: 12px;
+      height: 3px;
+      border-radius: 99px;
+      background-color: currentColor;
+    }
 
-/* Animasi Ikon saat aktif */
-.action-btn-active .icon-box {
-  transform: scale(1.1);
-}
+    /* Animasi Ikon saat aktif */
+    .action-btn-active .icon-box { transform: scale(1.1); }
 
+    /* Input Kuantitas */
     .qty-input::-webkit-outer-spin-button,
-.qty-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
+    .qty-input::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
 
-/* Menghilangkan tombol naik/turun di Firefox */
-.qty-input[type=number] {
-  -moz-appearance: textfield;
-}
+    /* Menghilangkan tombol naik/turun di Firefox */
+    .qty-input[type=number] { -moz-appearance: textfield; }
 
- 
+    /* Loading Overlay */
     #loading-overlay {
       display: none;
       position: fixed;
@@ -182,6 +144,7 @@ body.mode-pintas-active .qty-wrapper {
       justify-content: center;
       flex-direction: column;
     }
+    
     .spinner {
       width: 40px;
       height: 40px;
@@ -190,144 +153,126 @@ body.mode-pintas-active .qty-wrapper {
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
     
-    /* Modal Styles */
-   /* Modal Styles Terbaru */
-.modal-backdrop {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 1000;
-   align-items: start;  /* Mengubah posisi dari 'end' ke 'start' */
-  justify-content: center;
-  padding-top: 20px;   /* Memberi jarak sedikit dari atas layar ponsel */
-}
+    .animate-spin { animation: spin 1s linear infinite; }
+    @keyframes spin { 
+      0% { transform: rotate(0deg); } 
+      100% { transform: rotate(360deg); } 
+    }
 
-.modal-content {
-  background: white;
-  width: 95%;          /* Memberi sedikit ruang di kiri-kanan */
-  max-width: 28rem;
-  border-radius: 24px;  /* Membuat semua sudut membulat */
-  max-height: 85vh;
-  overflow-y: auto;
-  animation: slideDown 0.3s ease-out; /* Menggunakan animasi meluncur ke bawah */
-  display: flex;
-  flex-direction: column;
-}
+    /* ==================================================================== */
+    /* MODAL STYLES TERBARU                                                 */
+    /* ==================================================================== */
+    .modal-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 1000;
+      align-items: start;  
+      justify-content: center;
+      padding-top: 20px;   
+    }
 
-    /* Menghilangkan scrollbar tapi tetap bisa di-scroll (Opsional, agar lebih bersih) */
-#modalContent::-webkit-scrollbar {
-  display: none;
-}
-#modalContent {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;     /* Firefox */
-  
-  /* GANTI 'smooth' MENJADI 'auto' UNTUK MENGHAPUS EFEK MELUNCUR */
-  scroll-behavior: auto !important; 
-  
-  /* Memastikan momentum scroll di iOS tetap enak */
-  -webkit-overflow-scrolling: touch; 
-  
-}
+    .modal-content {
+      background: white;
+      width: 95%;          
+      max-width: 28rem;
+      border-radius: 24px;  
+      max-height: 85vh;
+      overflow-y: auto;
+      animation: slideDown 0.3s ease-out; 
+      display: flex;
+      flex-direction: column;
+    }
 
-/* Animasi baru agar modal muncul dari atas */
-@keyframes slideDown {
-  from { transform: translateY(-100%); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
+    /* Menghilangkan scrollbar tapi tetap bisa di-scroll */
+    #modalContent::-webkit-scrollbar { display: none; }
+    #modalContent {
+      -ms-overflow-style: none;  
+      scrollbar-width: none;     
+      scroll-behavior: auto !important; 
+      -webkit-overflow-scrolling: touch; 
+    }
 
-       /* CSS UNTUK CETAK (PRINT) */
-.animate-spin {
-    animation: spin 1s linear infinite;
-  }
-  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  
- 
-@media print {
-  @page {
-    /* Menjaga printer thermal memotong kertas secara otomatis sesuai panjang isi */
-    size: auto;
-    margin: 0;
-  }
+    /* Animasi baru agar modal muncul dari atas */
+    @keyframes slideDown {
+      from { transform: translateY(-100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
 
-  body {
-    margin: 0 !important;
-    padding: 0 !important;
-    background: white;
-    /* Memastikan body bertindak sebagai flex container untuk memposisikan nota di tengah */
-    display: flex !important;
-    justify-content: center !important;
-    align-items: flex-start !important;
-  }
+    /* ==================================================================== */
+    /* CSS UNTUK CETAK (PRINT)                                              */
+    /* ==================================================================== */
+    @media print {
+      @page { size: auto; margin: 0; }
+      body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: white;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: flex-start !important;
+      }
+      body > *:not(#printArea) { display: none !important; }
 
-  body > *:not(#printArea) {
-    display: none !important;
-  }
+      #printArea {
+        display: block !important;
+        width: 380px !important; 
+        height: auto !important; 
+        background: white;
+        margin: 0 auto !important;
+        padding: 0 !important; 
+        line-height: 1.2;
+        overflow: visible !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+      }
+    }
 
-  #printArea {
+    /* Tambahan agar saat muncul di layar (sebelum di-share), posisinya tersembunyi/tidak merusak UI */
+    #printArea {
+      position: absolute;
+      left: -9999px; 
+      top: 0;
+      background: white;
+      width: 380px;
+      z-index: -1; 
+    }
 
-display: block !important;
-  width: 380px !important; 
-  height: auto !important; 
-  background: white;
-  margin: 0 auto !important;
-  padding: 0 !important; /* Ubah padding jadi 0 di sini, kita atur di dalam HTML nota saja */
-  line-height: 1.2;
-  overflow: visible !important;
-  box-shadow: none !important;
-  box-sizing: border-box !important;
-}
-}
-
-/* Tambahan agar saat muncul di layar (sebelum di-share), posisinya juga di tengah */
-
-#printArea {
-  position: absolute;
-  left: -9999px; /* Membuang elemen ke luar layar agar tidak merusak tampilan UI */
-  top: 0;
-  background: white;
-  width: 380px;
-  z-index: -1; 
-}
-
-/* KHUSUS MODE PINTAS BLIMI (Desktop & HP Landscape) */
-/* Menjadikan input QTY sejajar di samping Nama Barang */
-@media (min-width: 768px), (orientation: landscape) and (max-height: 600px) {
-  body.mode-pintas-active .kasir-item {
-    display: flex !important;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem !important;
-  }
-  body.mode-pintas-active .kasir-item-top,
-  body.mode-pintas-active .kasir-item-bottom {
-    display: contents !important; 
-  }
-  body.mode-pintas-active .kasir-item-top > .relative.flex-1 {
-    order: 1;
-    margin-bottom: 0 !important;
-  }
- body.mode-pintas-active .qty-wrapper {
-    order: 2;
-    grid-column: auto !important; 
-    width: 130px !important; /* Diperlebar dari 80px agar muat untuk tombol hapus */
-    display: flex !important; /* Diubah dari block menjadi flex agar input dan tombol sejajar */
-  }
-  body.mode-pintas-active .qty-wrapper label {
-    display: none !important; /* Sembunyikan tulisan 'QTY' agar sejajar rapi */
-  }
-  body.mode-pintas-active .kasir-item-top > button {
-    order: 3;
-    margin-top: 0 !important;
-  }
-}
-
-
-  </style>
+    /* ==================================================================== */
+    /* KHUSUS MODE PINTAS BLIMI (Desktop & HP Landscape)                    */
+    /* ==================================================================== */
+    @media (min-width: 768px), (orientation: landscape) and (max-height: 600px) {
+      body.mode-pintas-active .kasir-item {
+        display: flex !important;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 0.75rem !important;
+      }
+      body.mode-pintas-active .kasir-item-top,
+      body.mode-pintas-active .kasir-item-bottom {
+        display: contents !important; 
+      }
+      body.mode-pintas-active .kasir-item-top > .relative.flex-1 {
+        order: 1;
+        margin-bottom: 0 !important;
+      }
+      body.mode-pintas-active .qty-wrapper {
+        order: 2;
+        grid-column: auto !important; 
+        width: 130px !important; 
+        display: flex !important; 
+      }
+      body.mode-pintas-active .qty-wrapper label {
+        display: none !important; 
+      }
+      body.mode-pintas-active .kasir-item-top > button {
+        order: 3;
+        margin-top: 0 !important;
+      }
+    }
+</style>
 </head>
 <body class="pb-safe">
 <div id="shop-selector" class="fixed inset-0 z-[9999] bg-slate-900 flex items-center justify-center p-6">
@@ -341,7 +286,25 @@ display: block !important;
     </div>
 
      <div class="space-y-4">
-       <!-- TAMBAHAN: Tombol BLIMI -->
+      <button onclick="selectShop('Muflih Print', 'Jl. Barawaja No. 19, Makassar')" 
+              class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95">
+        <div class="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">M</div>
+        <div class="text-left">
+          <p class="font-bold text-white group-hover:text-blue-400 transition">Muflih Print</p>
+          <p class="text-xs text-slate-400">Jl. Barawaja No. 19, Makassar</p>
+        </div>
+      </button>
+
+      <button onclick="selectShop('Vi Printing', 'Jl. Rappokalling Raya, Makassar')" 
+              class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95">
+        <div class="w-12 h-12 bg-purple-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">V</div>
+        <div class="text-left">
+          <p class="font-bold text-white group-hover:text-blue-400 transition">Vi Printing</p>
+          <p class="text-xs text-slate-400">Jl. Rappokalling Raya, Makassar</p>
+        </div>
+      </button>
+
+      <!-- TAMBAHAN: Tombol BLIMI -->
       <button onclick="selectShop('BLIMI', 'Jl. Kumala No. 05, Makassar')" 
               class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95 mt-2">
         <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">B</div>
@@ -786,6 +749,108 @@ function pilihPelangganManual() {
     setPelanggan(val.trim());
   }
 }
+
+function addItem(autoOpen = true) {
+  const id = Date.now();
+  const div = document.createElement('div');
+  div.id = `item-${id}`;
+  div.className = "kasir-item bg-white p-3 rounded-xl border border-slate-200 mb-3 shadow-sm animate-in slide-in-from-left duration-300";
+  
+  div.innerHTML = `
+    <!-- BAGIAN ATAS: HANYA INPUT NAMA BARANG -->
+    <div class="kasir-item-top mb-2">
+      <div class="relative w-full">
+        <input type="text" id="input-${id}" placeholder="Pilih barang..." readonly
+               onclick="openProductModal('input-${id}')"
+               class="w-full p-2.5 border rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-100 bg-slate-50 item-name cursor-pointer">
+      </div>
+    </div>
+
+    <!-- BAGIAN BAWAH: GRID (Kategori, Qty, Harga, Tombol Hapus) -->
+    <div class="kasir-item-bottom grid grid-cols-4 md:grid-cols-12 gap-2 items-start">
+      
+      <!-- KATEGORI (Sembunyi di Mode Pintas) -->
+      <div class="col-span-3 md:col-span-4 hide-on-pintas">
+        <label class="block md:hidden text-[9px] font-bold text-slate-400 ml-1 mb-0.5">KATEGORI</label>
+        <input type="text" id="kat-${id}" placeholder="LOT" 
+               oninput="this.value = this.value.toUpperCase()"
+               onkeypress="return event.charCode != 44"
+               class="w-full p-2 border-2 border-slate-100 bg-white rounded-lg text-[10px] font-bold uppercase text-blue-600 h-10 outline-none focus:ring-2 focus:ring-blue-400 item-category">
+      </div>
+
+      <!-- QTY & TOMBOL HAPUS MODE PINTAS -->
+      <div class="col-span-1 md:col-span-3 qty-wrapper flex gap-2 items-end">
+        <div class="flex-1">
+            <label class="block md:hidden text-[9px] font-bold text-slate-400 ml-1 mb-0.5">QTY</label>
+            <input type="number" placeholder="Qty" oninput="calcTotal()" value="1" onfocus="this.select()" 
+                   class="w-full p-2 border-2 border-slate-200 rounded-lg text-sm font-black text-center h-10 outline-none focus:ring-2 focus:ring-blue-400 qty-input">
+        </div>
+        
+        <!-- Tombol Hapus: HANYA TAMPIL DI MODE PINTAS (Samping Qty) -->
+        <button onclick="document.getElementById('item-${id}').remove(); calcTotal()" 
+                class="show-on-pintas w-10 h-10 shrink-0 bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 rounded-lg flex items-center justify-center transition-colors">
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- HARGA & TOMBOL HAPUS MODE STANDAR -->
+      <div class="col-span-4 md:col-span-5 hide-on-pintas">
+        <label class="block md:hidden text-[9px] font-bold text-slate-400 ml-1 mb-0.5">HARGA</label>
+        
+        <div class="flex gap-2 items-start">
+            <div class="relative flex-1">
+              <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 md:hidden">Rp</span>
+              <input type="text" inputmode="numeric" placeholder="Harga" 
+                     oninput="maskNominal(this); calcTotal()" 
+                     class="w-full p-2 pl-7 md:pl-2 border rounded-lg text-base font-bold accounting h-10 text-right outline-none focus:ring-2 focus:ring-blue-100 item-price">
+            </div>
+            
+            <!-- Tombol Hapus: HANYA TAMPIL DI MODE STANDAR (Samping Harga) -->
+            <button onclick="document.getElementById('item-${id}').remove(); calcTotal()" 
+                    class="hide-on-pintas w-10 h-10 shrink-0 bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 rounded-lg flex items-center justify-center transition-colors">
+              <i data-lucide="trash-2" class="w-4 h-4"></i>
+            </button>
+        </div>
+        
+        <!-- Info Harga (Umum/Reseller) -->
+        <div id="info-harga-${id}" class="hidden mt-1 px-1 flex justify-between text-[8px] text-slate-500 font-medium">
+           <span id="label-umum-${id}" class="cursor-pointer hover:text-blue-600 transition-colors" title="Gunakan Harga Umum" onclick="setHargaItem('${id}', this.dataset.harga)"></span>
+           <span id="label-reseller-${id}" class="cursor-pointer hover:text-blue-600 transition-colors" title="Gunakan Harga Reseller" onclick="setHargaItem('${id}', this.dataset.harga)"></span>
+        </div>
+      </div>
+
+    </div>
+  `;
+  document.getElementById('itemContainer').appendChild(div);
+  refreshIcons('itemContainer');
+  
+  if (autoOpen) {
+    openProductModal(`input-${id}`);
+  }
+  
+}
+
+function closeProductModal(e) {
+  if (!e || e.target.id === 'product-modal') {
+    // 1. Tutup modal terlebih dahulu
+    document.getElementById('product-modal').style.display = 'none';
+
+    // 2. Beri jeda sedikit agar browser selesai merender perubahan layout
+    setTimeout(() => {
+      // Ambil container barang yang benar sesuai dengan fungsi addItem
+      const containerBarang = document.getElementById('itemContainer'); 
+      
+      // Pastikan container ada dan memiliki setidaknya satu elemen anak (barang)
+      if (containerBarang && containerBarang.lastElementChild) {
+        containerBarang.lastElementChild.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' // Posisikan pas di tengah layar, aman dari tombol bawah
+        });
+      }
+    }, 100); 
+  }
+}
+
 // Jalankan saat load
 window.addEventListener('DOMContentLoaded', loadDaftarPelanggan);
 
@@ -4623,6 +4688,72 @@ window.handleNavLainnya = function() {
   }
 };
 
+// 1. SMART KEYBOARD DETECTOR (DI LUAR FUNGSI)
+// =========================================================================
+if (!window.keyboardListenerAttached) {
+    // Simpan tinggi awal layar untuk perbandingan
+    let initialHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
+    // Update tinggi awal jika orientasi layar (potret/lanskap) berubah
+    window.addEventListener('orientationchange', () => {
+        setTimeout(() => { 
+            initialHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight; 
+        }, 300);
+    });
+
+    const updateBarPosition = () => {
+        const bar = document.getElementById('kasir-action-bar');
+        const nav = document.querySelector('nav');
+        if (!window.visualViewport || !bar) return;
+
+        const currentVPHeight = window.visualViewport.height;
+        
+        // Deteksi apakah keyboard virtual terbuka (> 150px adalah batas aman)
+        const isKeyboardOpen = currentVPHeight < (initialHeight - 150);
+
+        if (isKeyboardOpen) {
+            // 1. Sembunyikan tab bawah
+            if (nav) nav.style.display = 'none'; 
+            
+            // 2. Hilangkan celah 60px (menimpa class bottom-[60px] bawaan Tailwind)
+            // Ini membuat bar menempel rapat di tepi bawah area yang terlihat
+            bar.style.bottom = '0px';
+            
+            // 3. Tangani perbedaan iOS Safari vs Android Chrome
+            // Di Android: innerHeight ikut mengecil seukuran sisa layar (overlap = 0)
+            // Di iOS: innerHeight tetap utuh, tapi visualViewport mengecil (overlap > 0)
+            const keyboardOverlap = window.innerHeight - currentVPHeight;
+            
+            if (keyboardOverlap > 0) {
+                // Perilaku iOS: Dorong bar ke atas sebesar area yang tertutup keyboard
+                bar.style.transform = `translateY(-${keyboardOverlap}px)`;
+            } else {
+                // Perilaku Android: Karena bottom=0 dan layar otomatis mengecil, posisi sudah pas
+                bar.style.transform = `translateY(0px)`;
+            }
+            
+            // Matikan transisi agar pergerakan instan dan menempel pada keyboard
+            bar.style.transition = 'none'; 
+        } else {
+            // SAAT KEYBOARD DITUTUP
+            if (nav) nav.style.display = ''; // Munculkan navigasi
+            
+            // Hapus style inline agar kembali mengikuti class Tailwind bawaan (bottom-[60px])
+            bar.style.bottom = ''; 
+            bar.style.transform = 'translateY(0px)';
+            bar.style.transition = 'bottom 0.2s ease-out, transform 0.2s ease-out'; // Animasi mulus saat turun
+        }
+    };
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', updateBarPosition);
+    }
+    
+    window.keyboardListenerAttached = true;
+}
+
+// 2. FUNGSI UTAMA CHANGETAB
+// =========================================================================
 function changeTab(tab) {
   // Mengecek apakah user mengklik tombol tab yang sama (bisa untuk force-reset)
   const isSameTab = (window.activeTab === tab);
@@ -4641,19 +4772,15 @@ function changeTab(tab) {
   const activeBtn = document.getElementById('nav-' + tab);
   if (activeBtn) activeBtn.classList.add('nav-active');
 
-  // --- FITUR BARU: SIMPAN TAB SEBELUMNYA KE MEMORI ---
   // Jika berpindah tab, amankan form tab sebelumnya (bukan riwayat) ke dalam DocumentFragment
   if (window.activeTab && window.activeTab !== 'riwayat' && !isSameTab) {
       const fragment = document.createDocumentFragment();
-      // Pindahkan semua elemen dari menuContainer ke dalam fragment (menggunting elemen)
       while (menuContainer.firstChild) {
           fragment.appendChild(menuContainer.firstChild);
       }
-      // Simpan di cache berdasarkan nama tab sebelumnya
       window.tabCacheNodes[window.activeTab] = fragment;
   }
   
-  // Update penanda tab aktif saat ini
   window.activeTab = tab;
 
   if (tab === 'riwayat') {
@@ -4676,13 +4803,9 @@ function changeTab(tab) {
     riwayatContainer.classList.add('hidden');
     menuContainer.classList.remove('hidden');
     
-    // --- FITUR BARU: KEMBALIKAN TAB DARI MEMORI JIKA ADA ---
-    // Jika tab tidak di-klik dua kali, dan data cache tab tujuan sudah ada
+    // Kembalikan tab dari memori
     if (!isSameTab && window.tabCacheNodes[tab]) {
-        // Tempelkan kembali form yang sudah disimpan (inputan otomatis kembali utuh)
         menuContainer.appendChild(window.tabCacheNodes[tab]);
-        
-        // Penyesuaian UI ringan untuk halaman Jual
         if (tab === 'penjualan') {
             if (typeof currentShop !== 'undefined' && currentShop.nama === 'BLIMI') {
               document.body.classList.toggle('mode-pintas-active', window.blimiModePintas);
@@ -4694,14 +4817,9 @@ function changeTab(tab) {
                 if (inlineSearch) inlineSearch.focus();
             }, 150);
         }
-        
-        // Hentikan fungsi di sini agar HTML tidak terender ulang (form kembali seperti semula)
         return; 
     }
 
-    // ==========================================================
-    // RENDER ULANG TAB (Jika Form Baru atau Jika User Klik Tab 2x)
-    // ==========================================================
     if (tab === 'penjualan') {
         if (typeof currentShop !== 'undefined' && currentShop.nama === 'BLIMI') {
           document.body.classList.toggle('mode-pintas-active', window.blimiModePintas);
@@ -4710,7 +4828,7 @@ function changeTab(tab) {
         }
 
         menuContainer.innerHTML = `
-          <div class="space-y-4 page-transition">
+          <div class="space-y-4 page-transition relative h-full">
             <div class="flex justify-between items-center">
               <h2 class="text-xl font-bold flex items-center gap-2">
                 <i data-lucide="shopping-cart" class="w-5 text-blue-600"></i> Penjualan Baru
@@ -4738,144 +4856,127 @@ function changeTab(tab) {
               </button>
             </div>
 
-            <div id="section-form-kasir" class="hidden space-y-4 animate-in fade-in duration-300">
-                <div class="mb-2 bg-blue-50 border border-blue-200 p-3 rounded-xl flex justify-between items-center shadow-sm">
-                  <div class="flex-1">
-                    <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Pelanggan Terpilih</p>
-                    <input type="text" id="inputPelangganUtama" class="font-black text-blue-800 text-base bg-transparent outline-none w-full cursor-default" readonly>
+            <div id="section-form-kasir" class="hidden animate-in fade-in duration-300 relative flex flex-col h-full">
+                
+                <div class="space-y-4 flex-1">
+                  <div class="mb-2 bg-blue-50 border border-blue-200 p-3 rounded-xl flex justify-between items-center shadow-sm">
+                    <div class="flex-1">
+                      <p class="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Pelanggan Terpilih</p>
+                      <input type="text" id="inputPelangganUtama" class="font-black text-blue-800 text-base bg-transparent outline-none w-full cursor-default" readonly>
+                    </div>
+                    <button onclick="openModalPelanggan()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all shrink-0"><i data-lucide="edit-3" class="w-3 h-3 inline mr-1"></i> Ubah</button>
                   </div>
-                  <button onclick="openModalPelanggan()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all shrink-0"><i data-lucide="edit-3" class="w-3 h-3 inline mr-1"></i> Ubah</button>
+
+                  ${currentShop.nama === 'BLIMI' ? '' : `
+                  <div class="mt-3">
+                    <label class="text-[10px] font-bold text-gray-400 uppercase ml-1 mb-2 block">Jenis Orderan</label>
+                    <div class="grid grid-cols-3 gap-2">
+                      <label class="cursor-pointer group">
+                        <input type="radio" name="p_ket_opt" value="BLANGKO" class="hidden peer">
+                        <div class="flex items-center justify-center p-2.5 rounded-xl border-2 border-slate-100 bg-white transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 group-active:scale-95">
+                          <span class="text-[10px] font-bold text-slate-600 peer-checked:text-blue-700 uppercase">Blangko</span>
+                        </div>
+                      </label>
+                      <label class="cursor-pointer group">
+                        <input type="radio" name="p_ket_opt" value="UNDANGAN" class="hidden peer">
+                        <div class="flex items-center justify-center p-2.5 rounded-xl border-2 border-slate-100 bg-white transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 group-active:scale-95">
+                          <span class="text-[10px] font-bold text-slate-600 peer-checked:text-blue-700 uppercase text-center">Undangan</span>
+                        </div>
+                      </label>
+                      <label class="cursor-pointer group">
+                        <input type="radio" name="p_ket_opt" value="LAIN-LAIN" class="hidden peer">
+                        <div class="flex items-center justify-center p-2.5 rounded-xl border-2 border-slate-100 bg-white transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 group-active:scale-95">
+                          <span class="text-[10px] font-bold text-slate-600 peer-checked:text-blue-700 uppercase">Lain-lain</span>
+                        </div>
+                      </label>
+                    </div>
+                  </div>
+                  `}
+
+                  <div class="py-2"> 
+                    <div class="border-t border-b border-slate-200 py-3">
+                      <p class="text-[10px] font-bold mb-3 text-slate-400 uppercase tracking-widest text-center">Daftar Barang</p>
+                      <div id="itemContainer" class="space-y-0"></div>
+                    </div>
+                  </div>
+                  
+                  <!-- Grid Dinamis Kalkulasi: Desktop & Mobile 2 Kolom -->
+                  <div class="grid grid-cols-2 gap-4 mt-1 md:flex md:flex-row md:divide-x md:divide-slate-200 hide-on-pintas">  
+                      <!-- KOLOM KIRI -->
+                      <div class="flex flex-col gap-3 md:flex-1 md:pr-4">
+                          <!-- Total Tagihan -->
+                          <div class="w-full">
+                              <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">Total Tagihan</label>
+                              <div class="w-full px-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-base font-extrabold text-blue-800 flex items-center h-11">
+                                  <span id="p_total_raw" class="w-full accounting">Rp 0</span>
+                              </div>
+                          </div>
+                          
+                          <!-- Diskon -->
+                          <div class="w-full">
+                              <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 block mb-1">Diskon (Rp)</label>
+                              <input id="p_disc" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="0" 
+                              class="w-full px-2 bg-slate-50 border-2 border-slate-200 rounded-xl accounting outline-none focus:ring-2 focus:ring-blue-500 text-base font-extrabold text-slate-700 h-11">
+                          </div>
+
+                          <!-- Total Akhir -->
+                          <div class="w-full">
+                              <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">Total Akhir</label>
+                              <div class="w-full px-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-base font-extrabold text-blue-900 flex items-center h-11">
+                                  <span id="p_final" class="w-full accounting">Rp 0</span>
+                              </div>
+                          </div>
+                      </div>
+
+                      <!-- KOLOM KANAN -->
+                      <div class="flex flex-col gap-3 md:flex-1 md:pl-4">
+                          <!-- DP / Bayar -->
+                          <div class="w-full">
+                              <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">DP / Bayar</label>
+                              <input id="p_dp" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="0" 
+                                class="w-full px-2 bg-green-50 border-2 border-green-200 rounded-xl text-base font-extrabold text-green-700 focus:ring-4 focus:ring-green-100 outline-none accounting h-11">
+                          </div>
+
+                          <!-- Sisa Piutang -->
+                          <div class="w-full">
+                              <label id="p_status_label" class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">Sisa Piutang</label>
+                              <div class="w-full px-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-base font-extrabold flex items-center h-11">
+                                  <span id="p_status_piutang" class="w-full accounting text-slate-500">Rp 0</span>
+                              </div>
+                          </div>
+
+                          <!-- Metode -->
+                          <div class="w-full">
+                              <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1 block">Metode</label>
+                              <div class="w-full">
+                                ${generatePaymentMethodHTML('payment-method', { color: 'blue' })}
+                              </div>
+                          </div>
+                      </div>
+                  </div> 
+
+                <div class="w-full h-28 pointer-events-none"></div>
+
                 </div>
 
-                ${currentShop.nama === 'BLIMI' ? '' : `
-                <div class="mt-3">
-                  <label class="text-[10px] font-bold text-gray-400 uppercase ml-1 mb-2 block">Jenis Orderan</label>
-                  <div class="grid grid-cols-3 gap-2">
-                    <label class="cursor-pointer group">
-                      <input type="radio" name="p_ket_opt" value="BLANGKO" class="hidden peer">
-                      <div class="flex items-center justify-center p-2.5 rounded-xl border-2 border-slate-100 bg-white transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 group-active:scale-95">
-                        <span class="text-[10px] font-bold text-slate-600 peer-checked:text-blue-700 uppercase">Blangko</span>
-                      </div>
-                    </label>
-                    <label class="cursor-pointer group">
-                      <input type="radio" name="p_ket_opt" value="UNDANGAN" class="hidden peer">
-                      <div class="flex items-center justify-center p-2.5 rounded-xl border-2 border-slate-100 bg-white transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 group-active:scale-95">
-                        <span class="text-[10px] font-bold text-slate-600 peer-checked:text-blue-700 uppercase text-center">Undangan</span>
-                      </div>
-                    </label>
-                    <label class="cursor-pointer group">
-                      <input type="radio" name="p_ket_opt" value="LAIN-LAIN" class="hidden peer">
-                      <div class="flex items-center justify-center p-2.5 rounded-xl border-2 border-slate-100 bg-white transition-all peer-checked:border-blue-500 peer-checked:bg-blue-50 group-active:scale-95">
-                        <span class="text-[10px] font-bold text-slate-600 peer-checked:text-blue-700 uppercase">Lain-lain</span>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-                `}
-
-               <div class="py-2"> 
-  <div class="border-t border-b border-slate-200 py-3">
-    <p class="text-[10px] font-bold mb-3 text-slate-400 uppercase tracking-widest text-center">Daftar Barang</p>
-    <div id="itemContainer" class="space-y-0"></div>
-  </div>
-</div>
- 
-<!-- Grid Dinamis: Mobile 2 Kolom, Desktop 3 Kolom -->
-<div class="flex flex-col mt-3 md:flex-row md:gap-0 md:divide-x md:divide-slate-200">
-    
-    <!-- === TOMBOL TAMBAH BARANG KHUSUS MOBILE === -->
-    <div class="w-full hide-on-pintas mb-4 md:hidden">
-        <button onclick="addItem(true)" class="w-full h-11 px-4 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 active:scale-95 transition-all border-2 border-blue-200 shadow-sm shrink-0">
-            <i data-lucide="plus-circle" class="w-4 h-4"></i> TAMBAH BARANG
+           <div id="kasir-action-bar" class="fixed bottom-[60px] left-0 right-0 z-[60] bg-white/95 backdrop-blur-md border-t border-slate-200 p-2 shadow-[0_-10px_20px_-5px_rgba(0,0,0,0.1)] transition-all duration-300 -mx-4 px-4 md:mx-0">
+    <div class="flex gap-2 max-w-5xl mx-auto w-full">
+        
+        <!-- Tombol Tambah Barang -->
+        <button onclick="addItem(true)" class="flex-[0.8] md:flex-1 h-10 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-md font-black text-[9px] sm:text-[11px] flex items-center justify-center gap-1.5 active:scale-95 transition-all border border-blue-200 shadow-sm shrink-0">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i> TAMBAH
         </button>
-    </div>
-    <!-- ========================================== -->
 
-    <!-- Wrapper 2 Kolom untuk Mobile (Memiliki garis pembatas tengah) -->
-    <div class="grid grid-cols-2 divide-x divide-slate-200 md:flex md:flex-1 md:divide-x md:divide-slate-200 hide-on-pintas">  
-        <!-- KOLOM KIRI -->
-        <div class="flex flex-col gap-3 pr-2 md:flex-1 md:pr-4">
-            <!-- Total Tagihan -->
-            <div class="w-full">
-                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">Total Tagihan</label>
-                <div class="w-full px-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-base font-extrabold text-blue-800 flex items-center h-11">
-                    <span id="p_total_raw" class="w-full accounting">Rp 0</span>
-                </div>
-            </div>
-            
-            <!-- Diskon -->
-            <div class="w-full">
-                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 block mb-1">Diskon (Rp)</label>
-                <input id="p_disc" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="0" 
-                class="w-full px-2 bg-slate-50 border-2 border-slate-200 rounded-xl accounting outline-none focus:ring-2 focus:ring-blue-500 text-base font-extrabold text-slate-700 h-11">
-            </div>
+        <!-- Tombol Estimasi WA -->
+        <button onclick="salinEstimasiWA()" class="flex-[0.8] md:flex-1 h-10 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-md font-black text-[9px] sm:text-[11px] active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-emerald-200 shadow-sm shrink-0 hide-on-pintas">
+            <i data-lucide="message-circle" class="w-4 h-4"></i> ESTIMASI
+        </button>
 
-            <!-- Total Akhir -->
-            <div class="w-full">
-                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">Total Akhir</label>
-                <div class="w-full px-2 bg-blue-50 border-2 border-blue-200 rounded-xl text-base font-extrabold text-blue-900 flex items-center h-11">
-                    <span id="p_final" class="w-full accounting">Rp 0</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- KOLOM KANAN -->
-        <div class="flex flex-col gap-3 pl-2 md:flex-1 md:px-4">
-            <!-- DP / Bayar -->
-            <div class="w-full">
-                <label class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">DP / Bayar</label>
-                <input id="p_dp" type="text" inputmode="numeric" oninput="maskNominal(this); calcTotal()" placeholder="0" 
-                  class="w-full px-2 bg-green-50 border-2 border-green-200 rounded-xl text-base font-extrabold text-green-700 focus:ring-4 focus:ring-green-100 outline-none accounting h-11">
-            </div>
-
-            <!-- Sisa Piutang -->
-            <div class="w-full">
-                <label id="p_status_label" class="text-[10px] font-bold text-gray-500 uppercase block mb-1 ml-1">Sisa Piutang</label>
-                <div class="w-full px-2 bg-slate-50 border-2 border-slate-200 rounded-xl text-base font-extrabold flex items-center h-11">
-                    <span id="p_status_piutang" class="w-full accounting text-slate-500">Rp 0</span>
-                </div>
-            </div>
-
-            <!-- Metode -->
-            <div class="w-full">
-                <label class="text-[10px] font-bold text-gray-500 uppercase ml-1 mb-1 block">Metode</label>
-                <div class="w-full">
-                  ${generatePaymentMethodHTML('payment-method', { color: 'blue' })}
-                </div>
-            </div>
-        </div>
-    </div> <!-- Batas 2 Kolom Mobile -->
-
-    <!-- KOLOM AKSI (Kanan Desktop, Bawah Mobile) -->
-    <div class="flex flex-col gap-3 mt-4 md:mt-0 md:flex-1 md:pl-4">
-        <!-- Tambah Barang (KHUSUS DESKTOP) -->
-        <div class="w-full hide-on-pintas hidden md:block">
-            <label class="hidden md:block text-[10px] font-bold text-transparent uppercase mb-1 ml-1">Aksi</label>
-            <button onclick="addItem(true)" class="w-full h-11 px-4 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-bold text-[11px] flex items-center justify-center gap-1.5 active:scale-95 transition-all border-2 border-blue-200 shrink-0">
-                <i data-lucide="plus-circle" class="w-4 h-4"></i> TAMBAH BARANG
-            </button>
-        </div>
-
-        <!-- Estimasi WA -->
-        <div class="w-full hide-on-pintas">
-            <label class="hidden md:block text-[10px] font-bold text-transparent uppercase mb-1 ml-1">Estimasi</label>
-            <button onclick="salinEstimasiWA()" class="w-full h-11 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold text-[12px] shadow-lg shadow-emerald-200 active:scale-95 transition-all flex items-center justify-center gap-1.5">
-               <i data-lucide="message-circle" class="w-4 h-4"></i> ESTIMASI WA
-            </button>
-        </div>
-
-        <!-- Simpan (Memiliki ID wrapper khusus untuk sticky mode pintas) -->
-        <div class="w-full mode-pintas-full-width" id="pintas-action-wrapper">
-            <label class="hidden md:block text-[10px] font-bold text-transparent uppercase mb-1 ml-1">Simpan</label>
-            <div class="flex gap-2">
-                <button onclick="addItem(true)" class="show-on-pintas flex-1 w-full h-11 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-bold text-[12px] flex items-center justify-center gap-1.5 active:scale-95 transition-all border-2 border-blue-200">
-                   <i data-lucide="plus-circle" class="w-4 h-4"></i> TAMBAH
-                </button>
-                <button onclick="savePenjualan()" class="flex-1 w-full h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-[12px] shadow-lg shadow-blue-200 active:scale-95 transition-all flex items-center justify-center gap-1.5 btn-proses-pintas">
-                   <i data-lucide="check-circle" class="w-4 h-4"></i> SIMPAN
-                </button>
-            </div>
-        </div>
+        <!-- Tombol Simpan Transaksi -->
+        <button onclick="savePenjualan()" class="flex-[1.4] md:flex-[1.5] h-10 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-black text-[11px] sm:text-xs shadow-md shadow-blue-300 active:scale-95 transition-all flex items-center justify-center gap-1.5">
+            <i data-lucide="check-circle" class="w-4 h-4"></i> SIMPAN
+        </button>
+        
     </div>
 </div>
             </div>
@@ -4886,7 +4987,6 @@ function changeTab(tab) {
         
         if (typeof lucide !== 'undefined') lucide.createIcons();
         
-        // Logika baru: Cek apakah masih loading atau sudah bisa dirender
         if (typeof isLoadingPelanggan !== 'undefined' && isLoadingPelanggan) {
             const inlineList = document.getElementById('inlineListDaftarPelanggan');
             if (inlineList) {
@@ -4945,7 +5045,7 @@ function changeTab(tab) {
             </div>
 
           <button onclick="savePembelian()" class="w-full bg-red-600 text-white p-4 rounded-2xl text-sm font-extrabold shadow-lg active:scale-95 transition-transform flex items-center justify-center gap-2">
-               <i data-lucide="save" class="w-4 h-4"></i> SIMPAN PEMBELIAN
+                <i data-lucide="save" class="w-4 h-4"></i> SIMPAN PEMBELIAN
             </button>
           </div>
         </div>
@@ -5349,91 +5449,6 @@ function formatWaktuLokal(waktuString) {
     // Jika format berbeda dari standar, kembalikan teks asli sebagai fallback
     return waktuString;
 }
-
-function addItem(autoOpen = true) {
-  const id = Date.now();
-  const div = document.createElement('div');
-  div.id = `item-${id}`;
-  div.className = "kasir-item bg-white p-3 rounded-xl border border-slate-200 mb-3 shadow-sm animate-in slide-in-from-left duration-300";
-  
-  div.innerHTML = `
-    <!-- BAGIAN ATAS: HANYA INPUT NAMA BARANG -->
-    <div class="kasir-item-top mb-2">
-      <div class="relative w-full">
-        <input type="text" id="input-${id}" placeholder="Pilih barang..." readonly
-               onclick="openProductModal('input-${id}')"
-               class="w-full p-2.5 border rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-100 bg-slate-50 item-name cursor-pointer">
-      </div>
-    </div>
-
-    <!-- BAGIAN BAWAH: GRID (Kategori, Qty, Harga, Tombol Hapus) -->
-    <div class="kasir-item-bottom grid grid-cols-4 md:grid-cols-12 gap-2 items-start">
-      
-      <!-- KATEGORI (Sembunyi di Mode Pintas) -->
-      <div class="col-span-3 md:col-span-4 hide-on-pintas">
-        <label class="block md:hidden text-[9px] font-bold text-slate-400 ml-1 mb-0.5">KATEGORI</label>
-        <input type="text" id="kat-${id}" placeholder="LOT" 
-               oninput="this.value = this.value.toUpperCase()"
-               onkeypress="return event.charCode != 44"
-               class="w-full p-2 border-2 border-slate-100 bg-white rounded-lg text-[10px] font-bold uppercase text-blue-600 h-10 outline-none focus:ring-2 focus:ring-blue-400 item-category">
-      </div>
-
-      <!-- QTY & TOMBOL HAPUS MODE PINTAS -->
-      <div class="col-span-1 md:col-span-3 qty-wrapper flex gap-2 items-end">
-        <div class="flex-1">
-            <label class="block md:hidden text-[9px] font-bold text-slate-400 ml-1 mb-0.5">QTY</label>
-            <input type="number" placeholder="Qty" oninput="calcTotal()" value="1" onfocus="this.select()" 
-                   class="w-full p-2 border-2 border-slate-200 rounded-lg text-sm font-black text-center h-10 outline-none focus:ring-2 focus:ring-blue-400 qty-input">
-        </div>
-        
-        <!-- Tombol Hapus: HANYA TAMPIL DI MODE PINTAS (Samping Qty) -->
-        <button onclick="document.getElementById('item-${id}').remove(); calcTotal()" 
-                class="show-on-pintas w-10 h-10 shrink-0 bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 rounded-lg flex items-center justify-center transition-colors">
-          <i data-lucide="trash-2" class="w-4 h-4"></i>
-        </button>
-      </div>
-
-      <!-- HARGA & TOMBOL HAPUS MODE STANDAR -->
-      <div class="col-span-4 md:col-span-5 hide-on-pintas">
-        <label class="block md:hidden text-[9px] font-bold text-slate-400 ml-1 mb-0.5">HARGA</label>
-        
-        <div class="flex gap-2 items-start">
-            <div class="relative flex-1">
-              <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 md:hidden">Rp</span>
-              <input type="text" inputmode="numeric" placeholder="Harga" 
-                     oninput="maskNominal(this); calcTotal()" 
-                     class="w-full p-2 pl-7 md:pl-2 border rounded-lg text-base font-bold accounting h-10 text-right outline-none focus:ring-2 focus:ring-blue-100 item-price">
-            </div>
-            
-            <!-- Tombol Hapus: HANYA TAMPIL DI MODE STANDAR (Samping Harga) -->
-            <button onclick="document.getElementById('item-${id}').remove(); calcTotal()" 
-                    class="hide-on-pintas w-10 h-10 shrink-0 bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 rounded-lg flex items-center justify-center transition-colors">
-              <i data-lucide="trash-2" class="w-4 h-4"></i>
-            </button>
-        </div>
-        
-        <!-- Info Harga (Umum/Reseller) -->
-        <div id="info-harga-${id}" class="hidden mt-1 px-1 flex justify-between text-[8px] text-slate-500 font-medium">
-           <span id="label-umum-${id}" class="cursor-pointer hover:text-blue-600 transition-colors" title="Gunakan Harga Umum" onclick="setHargaItem('${id}', this.dataset.harga)"></span>
-           <span id="label-reseller-${id}" class="cursor-pointer hover:text-blue-600 transition-colors" title="Gunakan Harga Reseller" onclick="setHargaItem('${id}', this.dataset.harga)"></span>
-        </div>
-      </div>
-
-    </div>
-  `;
-  document.getElementById('itemContainer').appendChild(div);
-  refreshIcons('itemContainer');
-
-  if (autoOpen) {
-    openProductModal(`input-${id}`);
-  }
-}
-
-    function closeProductModal(e) {
-      if (!e || e.target.id === 'product-modal') {
-        document.getElementById('product-modal').style.display = 'none';
-      }
-    }
 
  function filterProducts() {
   const searchInput = document.getElementById('modal-search');
@@ -8196,7 +8211,7 @@ window.eksekusiMultiUtang = async function() {
 let deferredPrompt;
 
 // 1. Deteksi Mode Aplikasi & Perangkat
-const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobi/i.test(navigator.userAgent) || window.innerWidth < 768;
+const isMobileDevice = false; // Mematikan deteksi agar web tidak terkunci
 const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
 const isStandalone = 
@@ -8355,7 +8370,7 @@ function showMandatoryScreen(type) {
 }
 
 // 3. Eksekusi Utama Logika Pemblokiran (Hanya jika dibuka di Browser HP)
-if (!isStandalone && isMobileDevice) {
+if (false) {
     // Cek apakah pengguna sudah diberi izin (Skip) di sesi ini
     if (sessionStorage.getItem('skip_install_allowed') !== 'true') {
         if (isIOS) {
