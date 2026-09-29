@@ -8,7 +8,11 @@
   <title>Kasir & Arus Kas Modern</title>
   <!-- Tambahkan di dalam <head> pada index.html -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Tambahkan library pemindai barcode -->
+<script src="https://unpkg.com/html5-qrcode"></script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Tambahkan di dalam <head> -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -536,6 +540,25 @@
     </div>
 </div>
 
+<!-- Modal Scanner Kamera -->
+<div id="scanner-modal" class="hidden fixed inset-0 z-[10000] bg-slate-900/95 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in zoom-in-95 duration-200">
+  <div class="w-full max-w-md bg-white rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+    <div class="p-4 border-b flex justify-between items-center bg-slate-50">
+      <h3 class="font-bold text-slate-800 flex items-center gap-2">
+        <i data-lucide="scan-line" class="w-5 h-5 text-blue-600"></i>
+        Arahkan Kamera ke Barcode
+      </h3>
+      <button onclick="tutupScanner()" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-100 text-red-500 transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </div>
+    <div id="reader" class="w-full bg-black min-h-[300px]"></div>
+    <div class="p-3 bg-slate-50 text-center text-[10px] font-bold text-slate-500">
+      Gunakan kamera belakang handphone Anda. Pastikan pencahayaan cukup.
+    </div>
+  </div>
+</div>
+
   <script>
  
 const CURRENT_APP_VERSION = "2026.09.21-v3.1";
@@ -558,6 +581,73 @@ window.setBlimiMode = function(isPintas) {
       btnPintas.className = "px-4 py-1.5 text-[10px] font-bold rounded-md text-slate-500 hover:text-slate-700 transition-all";
     }
   }
+};
+
+
+// --- LOGIKA SCAN BARCODE RESI ---
+let html5QrcodeScanner = null;
+
+window.toggleManualResi = function() {
+    const input = document.getElementById('input-resi');
+    const isManual = document.getElementById('cek-manual-resi').checked;
+    
+    if (isManual) {
+        input.readOnly = false;
+        input.classList.remove('bg-slate-50');
+        input.classList.add('bg-white');
+        input.focus();
+    } else {
+        input.readOnly = true;
+        input.classList.add('bg-slate-50');
+        input.classList.remove('bg-white');
+    }
+};
+
+window.bukaScanner = function() {
+    document.getElementById('scanner-modal').classList.remove('hidden');
+    
+    // Konfigurasi area scan memanjang untuk barcode (1D)
+    html5QrcodeScanner = new Html5Qrcode("reader");
+    const config = { 
+        fps: 10, 
+        qrbox: { width: 300, height: 100 },
+        aspectRatio: 1.0 
+    };
+    
+    html5QrcodeScanner.start(
+        { facingMode: "environment" }, // Paksa gunakan kamera belakang
+        config,
+        (decodedText, decodedResult) => {
+            // Jika Berhasil Scan
+            document.getElementById('input-resi').value = decodedText;
+            document.getElementById('cek-manual-resi').checked = false;
+            toggleManualResi(); // Kembalikan ke mode readonly
+            tutupScanner();
+            
+            // Efek visual sukses
+            const inputField = document.getElementById('input-resi');
+            inputField.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-50');
+            setTimeout(() => {
+                inputField.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50');
+            }, 1000);
+        },
+        (errorMessage) => {
+            // Abaikan error saat proses mencari fokus
+        }
+    ).catch((err) => {
+        alert("Gagal mengakses kamera. Pastikan browser memiliki izin kamera.");
+        tutupScanner();
+    });
+};
+
+window.tutupScanner = function() {
+    document.getElementById('scanner-modal').classList.add('hidden');
+    if (html5QrcodeScanner) {
+        html5QrcodeScanner.stop().then(() => {
+            html5QrcodeScanner.clear();
+            html5QrcodeScanner = null;
+        }).catch(err => console.error("Gagal menghentikan kamera", err));
+    }
 };
 
    let currentFetchId = 0;
@@ -610,6 +700,66 @@ document.addEventListener("wheel", function(event) {
   }
 }, { passive: true }); // Menggunakan passive: true agar scroll halaman bekerja sangat lancar
 
+window.getHargaBerlaku = function(productObj, pelangganObj) {
+    // Gunakan parameter fungsi jika ada, atau ambil dari variabel global activePelangganObj
+    let targetPelanggan = pelangganObj || activePelangganObj;
+
+    // Jika belum tersimpan di variabel global, coba cari berdasarkan nilai input saat ini
+    if (!targetPelanggan) {
+        const elemPelanggan = document.getElementById('pelanggan') || document.getElementById('inputPelangganUtama');
+        const namaP = elemPelanggan ? elemPelanggan.value.trim().toUpperCase() : '';
+        
+        // Cari di data global pelanggan yang sudah di-load dari Supabase
+        if (typeof dataPelangganGlobal !== 'undefined' && Array.isArray(dataPelangganGlobal)) {
+            targetPelanggan = dataPelangganGlobal.find(p => p.nama.toUpperCase() === namaP);
+        }
+    }
+
+    // Validasi apakah pelanggan tersebut adalah toko dan memiliki kode toko
+    if (targetPelanggan && targetPelanggan.is_toko === true && targetPelanggan.kode_toko) {
+        const kode = targetPelanggan.kode_toko.trim();
+        
+        // Amankan parsing JSONB dari database/stok
+        const hargaTokoObj = typeof productObj.harga_toko === 'string' 
+            ? JSON.parse(productObj.harga_toko) 
+            : (productObj.harga_toko || {});
+        
+        const hargaKhusus = Number(hargaTokoObj[kode]);
+        if (!isNaN(hargaKhusus) && hargaKhusus > 0) {
+            return hargaKhusus;
+        }
+    }
+    
+    // Fallback ke harga umum jika bukan toko atau harga khusus tidak diset
+    return productObj.harga_jual_umum || productObj.harga_umum || 0;
+};
+
+// 2. Fungsi untuk menandai dan mencatat jika harga diklik & diubah
+window.markPriceEdited = function(chkId, newPriceRaw) {
+    const newPriceStr = newPriceRaw.toString().replace(/[^0-9]/g, "");
+    const newPrice = parseFloat(newPriceStr) || 0;
+
+    const ref = window.rekapItemRefsLangsung.find(r => r.chkId === chkId);
+    if (ref) {
+        ref.isPriceEdited = true;
+        ref.newPrice = newPrice;
+        
+        // Update Tampilan (Warna Berubah ke Oranye sebagai penanda)
+        const mob = document.getElementById(`mobile-price-${chkId}`);
+        const desk = document.getElementById(`desktop-price-${chkId}`);
+        
+        [mob, desk].forEach(elem => {
+            if (elem) {
+                elem.value = formatRupiah(newPrice).replace('Rp ', '');
+                elem.classList.add('text-orange-600', 'bg-orange-50', 'border-orange-400', 'px-1');
+                elem.classList.remove('text-slate-700', 'border-slate-300', 'bg-transparent');
+            }
+        });
+
+        // Otomatis mencentang checkbox (karena item ini sudah diedit dan siap diproses)
+        syncCheckboxes(chkId, true);
+    }
+};
 
 let dataPelangganGlobal = [];
 let isLoadingPelanggan = false; // Tambahan: Penanda status loading
@@ -664,22 +814,64 @@ async function loadDaftarPelanggan() {
   }
 }
 
+
 function renderListPelanggan(data) {
-  const listContainer = document.getElementById('listDaftarPelanggan');
-  listContainer.innerHTML = ''; // Bersihkan list
-  
-  data.forEach(pelanggan => {
-    // Menangkap nama jika wujudnya object, atau biarkan jika bentuknya teks (saat input manual)
-    const namaPelanggan = typeof pelanggan === 'object' ? pelanggan.nama : pelanggan;
+    const listContainer = document.getElementById('listDaftarPelanggan');
+    if (!listContainer) return;
+    listContainer.innerHTML = ''; 
     
-    const li = document.createElement('li');
-    li.className = 'cursor-pointer p-2 hover:bg-blue-100 rounded border-b border-gray-200 text-gray-700 font-medium text-sm';
-    li.innerText = namaPelanggan;
-    li.onclick = function() {
-      setPelanggan(namaPelanggan);
+    data.forEach(pelanggan => {
+        // Ambil data (mengantisipasi jika ada data yg masih string lama)
+        const idPelanggan = pelanggan.id || null;
+        const namaPelanggan = typeof pelanggan === 'object' ? pelanggan.nama : pelanggan;
+        const isToko = typeof pelanggan === 'object' ? (pelanggan.is_toko === true) : false;
+        
+        const li = document.createElement('li');
+        li.className = 'p-3 hover:bg-blue-50 rounded border-b border-gray-200 flex justify-between items-center transition-colors';
+        
+        // --- BAGIAN KIRI (NAMA & BADGE) UNTUK MEMILIH PELANGGAN ---
+        const divInfo = document.createElement('div');
+        divInfo.className = 'cursor-pointer flex-1 flex items-center gap-2';
+        
+        let infoHTML = `<span class="text-gray-700 font-medium text-sm">${namaPelanggan}</span>`;
+        if (isToko) {
+            infoHTML += `<span class="text-[9px] font-black px-2 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">TOKO</span>`;
+        }
+        divInfo.innerHTML = infoHTML;
+        
+        // Klik bagian nama akan memilih pelanggan
+        divInfo.onclick = function() {
+            setPelanggan(pelanggan); 
+        };
+        
+      // --- BAGIAN KANAN (TOMBOL OPSI JADIKAN TOKO) ---
+const divAksi = document.createElement('div');
+
+if (idPelanggan) {
+    const btnToggle = document.createElement('button');
+    if (isToko) {
+        btnToggle.className = 'text-[10px] px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded border border-red-200 font-bold';
+        btnToggle.innerText = 'Jadikan Biasa';
+    } else {
+        btnToggle.className = 'text-[10px] px-2 py-1 bg-green-50 text-green-600 hover:bg-green-100 rounded border border-green-200 font-bold';
+        btnToggle.innerText = '+ Jadikan Toko';
+    }
+    
+    // PERBAIKAN: Hentikan event bubbling dan sesuaikan urutan parameter (id, isToko, nama)
+    btnToggle.onclick = function(e) {
+        e.stopPropagation();
+        toggleStatusToko(idPelanggan, isToko, namaPelanggan);
     };
-    listContainer.appendChild(li);
-  });
+    
+    divAksi.appendChild(btnToggle);
+}
+        
+        // Gabungkan ke elemen <li>
+        li.appendChild(divInfo);
+        li.appendChild(divAksi);
+        
+        listContainer.appendChild(li);
+    });
 }
 
 // 3. Filter/Pencarian di dalam Modal
@@ -725,12 +917,26 @@ function closeModalPelanggan() {
   renderListPelanggan(dataPelangganGlobal); // Reset filter
 }
 
-function setPelanggan(nama) {
-  document.getElementById('inputPelangganUtama').value = nama; 
+// Variabel global untuk menyimpan data pelanggan yang sedang aktif dipilih
+let activePelangganObj = null;
+
+function setPelanggan(pelanggan) {
+  // Jika parameter berupa objek, simpan ke variabel global
+  if (typeof pelanggan === 'object' && pelanggan !== null) {
+    activePelangganObj = pelanggan;
+    document.getElementById('inputPelangganUtama').value = pelanggan.nama;
+  } else {
+    // Fallback jika hanya string nama yang dikirim
+    activePelangganObj = dataPelangganGlobal.find(p => p.nama === pelanggan) || {
+      nama: pelanggan,
+      is_toko: false,
+      kode_toko: null
+    };
+    document.getElementById('inputPelangganUtama').value = pelanggan;
+  }
   closeModalPelanggan();
 }
 
-// --- FUNGSI PELANGGAN INLINE (DI HALAMAN UTAMA KASIR) ---
 function renderInlineListPelanggan(data) {
     const listContainer = document.getElementById('inlineListDaftarPelanggan');
     if (!listContainer) return;
@@ -738,9 +944,20 @@ function renderInlineListPelanggan(data) {
     
     data.forEach(pelanggan => {
         const namaPelanggan = typeof pelanggan === 'object' ? pelanggan.nama : pelanggan;
+        // Deteksi apakah pelanggan ini adalah Toko
+        const isToko = typeof pelanggan === 'object' ? (pelanggan.is_toko === true) : false;
+        
         const li = document.createElement('li');
-        li.className = 'cursor-pointer p-3 hover:bg-blue-100 rounded-xl border-b border-gray-100 text-gray-700 font-bold text-sm transition-colors';
-        li.innerText = namaPelanggan;
+        // Tambahkan flex dan items-center agar teks nama & badge toko sejajar
+        li.className = 'cursor-pointer p-3 hover:bg-blue-100 rounded-xl border-b border-gray-100 text-gray-700 font-bold text-sm transition-colors flex items-center gap-2';
+        
+        // Buat isi elemen dengan mengecek status is_toko
+        let innerHTML = `<span>${namaPelanggan}</span>`;
+        if (isToko) {
+            innerHTML += `<span class="text-[9px] font-black px-2 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">TOKO</span>`;
+        }
+        li.innerHTML = innerHTML;
+        
         li.onclick = function() {
           lanjutKeFormKasir(namaPelanggan);
         };
@@ -802,12 +1019,170 @@ function lanjutKeFormKasir(nama) {
     }, 150);
 }
 
-// 5. Pilih pelanggan yang diketik manual (Otomatis jadi pelanggan baru di backend)
-function pilihPelangganManual() {
-  const val = document.getElementById('searchModalPelanggan').value;
-  if(val.trim() !== '') {
-    setPelanggan(val.trim());
+async function pilihPelangganManual() {
+  const inputElem = document.getElementById('searchModalPelanggan');
+  if (!inputElem) return;
+
+  const val = inputElem.value.trim();
+  if (val === '') return;
+
+  const namaInput = val.toUpperCase();
+
+  // 1. Cek apakah pelanggan sudah ada di database lokal/master
+  let pelangganDitemukan = null;
+  if (typeof masterPelanggan !== 'undefined' && Array.isArray(masterPelanggan)) {
+    pelangganDitemukan = masterPelanggan.find(
+      p => (typeof p === 'object' ? p.nama : p).toString().toUpperCase() === namaInput
+    );
   }
+
+  // 2. Jika pelanggan SUDAH ADA, langsung gunakan tanpa pop-up
+  if (pelangganDitemukan) {
+    setPelanggan(pelangganDitemukan);
+    selesaikanPilihManual(inputElem);
+    return;
+  }
+
+  // 3. Jika PELANGGAN BARU, munculkan Pop-Up konfirmasi
+  // Teks didesain agar jelas: OK = Biasa (Ya), Cancel = Toko (Tidak)
+  const isPelangganBiasa = confirm(`"${namaInput}" adalah pelanggan baru.\n\nApakah ini Pelanggan Biasa?\n• Klik [OK / Ya] untuk Pelanggan Biasa\n• Klik [Batal / Tidak] untuk jadikan TOKO`);
+  
+  const isToko = !isPelangganBiasa; 
+
+  // 4. Jika dia memilih Toko (Cancel/Tidak), cek limit 10 toko dulu
+  if (isToko) {
+    const totalTokoSaatIni = await getJumlahToko(); // Mengambil dari fungsi cek limit sebelumnya
+    if (totalTokoSaatIni >= 10) {
+      alert("Gagal: Kuota maksimal 10 toko sudah penuh! Pelanggan ini otomatis didaftarkan sebagai Pelanggan Biasa.");
+      // Fallback: Paksa menjadi pelanggan biasa jika kuota habis
+      prosesSetPelangganBaru(namaInput, false, inputElem);
+      return;
+    }
+  }
+
+  // 5. Eksekusi penentuan pelanggan baru sesuai pilihan
+  prosesSetPelangganBaru(namaInput, isToko, inputElem);
+}
+
+async function getJumlahToko() {
+  try {
+    const { count, error } = await supabaseClient
+      .from('pelanggan')
+      .select('*', { count: 'exact', head: true })
+      .eq('is_toko', true);
+
+    if (error) throw error;
+    
+    return count || 0;
+  } catch (error) {
+    console.error('Error saat menghitung jumlah toko:', error);
+    return 0; // Memberikan nilai fallback agar script tidak berhenti
+  }
+}
+
+function prosesSetPelangganBaru(namaInput, isToko, inputElem) {
+  // Buat objek sementara agar sistem kasir (getHargaBerlaku) langsung mengenali status tokonya
+  const pelangganBaruObj = {
+    nama: namaInput,
+    is_toko: isToko,
+    kode_toko: isToko ? namaInput.toLowerCase().replace(/[^a-z0-9]/g, '_') : null
+  };
+
+  // TAMBAHAN: Masukkan pelanggan baru ke memori global agar terdeteksi oleh modal barang
+  if (typeof dataPelangganGlobal !== 'undefined') {
+    dataPelangganGlobal.push(pelangganBaruObj);
+  }
+
+  // Masukkan ke input form kasir
+  setPelanggan(pelangganBaruObj);
+
+  // Opsional namun disarankan: Langsung simpan ke Supabase secara otomatis di latar belakang
+  if (typeof simpanPelanggan === 'function') {
+     // Memanggil fungsi simpanPelanggan() dari instruksi sebelumnya
+     // null artinya ini insert baru, bukan update
+    simpanPelanggan(null, namaInput, isToko);
+  }
+
+  selesaikanPilihManual(inputElem);
+}
+
+// Fungsi Helper untuk merapikan UI setelah selesai
+function selesaikanPilihManual(inputElem) {
+  inputElem.value = '';
+  if (typeof tutupModalPelanggan === 'function') {
+    tutupModalPelanggan();
+  } else if (typeof closeModalPelanggan === 'function') {
+    closeModalPelanggan();
+  }
+}
+
+async function toggleStatusToko(id, currentStatus, nama) {
+    try {
+        // Cek kuota maksimal 10 jika ingin mengubah status menjadi toko (is_toko = true)
+        if (!currentStatus) {
+            const jumlahTokoSaatIni = await getJumlahToko();
+            if (jumlahTokoSaatIni >= 10) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Batas Maksimal!',
+                    text: 'Maksimal hanya 10 pelanggan yang bisa dijadikan TOKO.'
+                });
+                return;
+            }
+        }
+
+        const actionText = currentStatus ? 'Mencabut status TOKO dari' : 'Menjadikan TOKO untuk';
+        const result = await Swal.fire({
+            title: 'Konfirmasi',
+            text: `${actionText} ${nama}?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Lanjutkan',
+            cancelButtonText: 'Batal'
+        });
+
+        if (result.isConfirmed) {
+            Swal.fire({ 
+                title: 'Memproses...', 
+                allowOutsideClick: false, 
+                didOpen: () => Swal.showLoading() 
+            });
+
+            let kodeTokoUpdate = null;
+            if (!currentStatus) {
+                kodeTokoUpdate = nama.toLowerCase().trim().replace(/\s+/g, '_');
+            }
+
+            const { error } = await supabaseClient
+                .from('pelanggan')
+                .update({
+                    is_toko: !currentStatus,
+                    kode_toko: kodeTokoUpdate
+                })
+                .eq('id', id);
+
+            if (error) throw error;
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil',
+                text: 'Status pelanggan berhasil diperbarui!',
+                timer: 1500,
+                showConfirmButton: false
+            });
+
+            if (typeof loadDaftarPelanggan === 'function') {
+                loadDaftarPelanggan();
+            }
+        }
+    } catch (error) {
+        console.error('Error update status toko:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Gagal',
+            text: 'Terjadi kesalahan saat memperbarui status.'
+        });
+    }
 }
 
 function addItem(autoOpen = true) {
@@ -865,11 +1240,11 @@ function addItem(autoOpen = true) {
         
         <div class="flex gap-2 items-start">
             <div class="relative flex-1">
-              <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 md:hidden">Rp</span>
-              <input type="text" inputmode="numeric" placeholder="Harga" 
-                     oninput="maskNominal(this); calcTotal()" 
-                     class="w-full p-2 pl-7 md:pl-2 border rounded-lg text-base font-bold accounting h-10 text-right outline-none focus:ring-2 focus:ring-blue-100 item-price">
-            </div>
+  <span class="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] font-bold text-slate-400 md:hidden">Rp</span>
+  <input type="text" inputmode="numeric" placeholder="Harga" 
+         oninput="checkPriceChange(this, '${id}')" 
+         class="w-full p-2 pl-7 md:pl-2 border border-slate-200 rounded-lg text-base font-bold accounting h-10 text-right outline-none focus:ring-2 focus:ring-blue-100 item-price">
+</div>
             
             <!-- Tombol Hapus: HANYA TAMPIL DI MODE STANDAR (Samping Harga) -->
             <button onclick="document.getElementById('item-${id}').remove(); calcTotal()" 
@@ -895,6 +1270,91 @@ function addItem(autoOpen = true) {
   }
   
 }
+
+// Fungsi untuk memvalidasi dan mengunci kolom harga saat barang dipilih
+window.kunciHargaKhususToko = function(id, productObj, targetPelanggan) {
+    const inputHarga = document.querySelector(`#item-${id} .item-price`);
+    if (!inputHarga) return;
+
+    // Simpan harga normal ke atribut dataset sebagai patokan
+    inputHarga.dataset.hargaNormal = productObj.harga_jual_umum || productObj.harga_umum || 0;
+
+    let isToko = false;
+    let hasHargaKhusus = false;
+
+    // Cek apakah pelanggan adalah "Toko" dan punya kode unik
+    if (targetPelanggan && targetPelanggan.is_toko === true && targetPelanggan.kode_toko) {
+        isToko = true;
+        const kode = targetPelanggan.kode_toko.trim();
+        const hargaTokoObj = typeof productObj.harga_toko === 'string' 
+            ? JSON.parse(productObj.harga_toko) 
+            : (productObj.harga_toko || {});
+        
+        const hargaKhusus = Number(hargaTokoObj[kode]);
+        if (!isNaN(hargaKhusus) && hargaKhusus > 0) {
+            hasHargaKhusus = true;
+        }
+    }
+
+    // Jika toko sudah punya harga khusus, kunci kolom (readonly) dan tambahkan alert tooltip
+    if (isToko && hasHargaKhusus) {
+        inputHarga.readOnly = true;
+        inputHarga.classList.add('bg-slate-100', 'cursor-not-allowed', 'text-blue-700');
+        
+        // Peringatan saat user berusaha mengklik/merubah kolom
+        inputHarga.onclick = function() {
+            Swal.fire({
+                icon: 'info',
+                title: 'Harga Terkunci',
+                text: 'Harga khusus untuk pelanggan toko ini sudah ada. Harga dapat diubah setelah terinput, kemudian masuk ke rekapan penjualan.',
+                toast: true,
+                position: 'top',
+                showConfirmButton: false,
+                timer: 4000
+            });
+        };
+    } else {
+        // Reset jika bukan toko atau belum punya harga khusus (kolom bisa diedit)
+        inputHarga.readOnly = false;
+        inputHarga.classList.remove('bg-slate-100', 'cursor-not-allowed', 'text-blue-700');
+        inputHarga.onclick = null; 
+    }
+};
+
+// Fungsi untuk menandai secara visual jika harga diubah dari harga dasar
+window.checkPriceChange = function(inputElem, id) {
+    // Tetap jalankan format masking dan perhitungan total Anda yang sudah ada
+    if (typeof maskNominal === 'function') maskNominal(inputElem);
+    if (typeof calcTotal === 'function') calcTotal();
+
+    const currentPriceStr = inputElem.value.replace(/[^0-9]/g, "");
+    const currentPrice = parseFloat(currentPriceStr) || 0;
+    const normalPrice = parseFloat(inputElem.dataset.hargaNormal) || 0;
+
+    // Bandingkan harga input dengan harga normal
+    if (normalPrice > 0 && currentPrice !== normalPrice) {
+        // Tanda jika berubah: background kuning/oranye halus
+        inputElem.classList.add('text-orange-600', 'bg-orange-50', 'border-orange-400');
+        inputElem.classList.remove('text-slate-700', 'border-slate-200', 'bg-white');
+        
+        // Tambahkan teks peringatan kecil di bawah harga (opsional)
+        let warningText = document.getElementById(`price-warning-${id}`);
+        if (!warningText) {
+            warningText = document.createElement('div');
+            warningText.id = `price-warning-${id}`;
+            warningText.className = "text-[9px] text-orange-500 font-bold mt-1 absolute -bottom-4 right-0";
+            warningText.innerText = "*Harga berbeda dari normal";
+            inputElem.parentElement.appendChild(warningText);
+        }
+    } else {
+        // Kembali ke style normal jika sama dengan harga umum
+        inputElem.classList.remove('text-orange-600', 'bg-orange-50', 'border-orange-400');
+        inputElem.classList.add('text-slate-700', 'border-slate-200');
+        
+        const warningText = document.getElementById(`price-warning-${id}`);
+        if (warningText) warningText.remove();
+    }
+};
 
 function closeProductModal(e) {
   if (!e || e.target.id === 'product-modal') {
@@ -1505,6 +1965,7 @@ async function fetchInitialData() {
   try {
     // Memanggil 1 endpoint tunggal untuk mendapatkan data Saldo dan Stok secara bersamaan
   const { data, error } = await supabaseClient.rpc('get_initial_data');
+  console.log("Data mentah dari RPC:", data.stocks);
 
 if (error) {
     throw error; // Lempar error agar langsung melompat ke blok catch
@@ -1542,7 +2003,9 @@ const bal = data.balances;
         nama: String(item.nama || '').toUpperCase(),
         kategori: String(item.kategori || 'UMUM').toUpperCase(),
         harga_umum: parseFloat(item.hargaUmum) || 0,
-        harga_reseller: parseFloat(item.hargaReseller) || 0
+        harga_reseller: parseFloat(item.hargaReseller) || 0,
+        // TAMBAHKAN BARIS INI: Tangkap harga_toko (antisipasi format dari RPC)
+        harga_toko: item.harga_toko || item.hargaToko || {} 
       }));
     }
 
@@ -2746,13 +3209,16 @@ window.prosesUpdateTerpilihLangsung = async function() {
     let updatesMap = {}; 
     let adaYangDiproses = false;
 
-    // 1. HANYA kumpulkan data yang benar-benar DICENTANG saja
+    let customersToFetch = new Set();
+    let editedPricesMap = []; 
+    let txWithPriceChange = new Set();
+
+    // 1. Kumpulkan data yang dicentang & harga yang diedit
     refs.forEach(groupItem => {
         const deskChk = document.getElementById(`desktop-${groupItem.chkId}`);
         const mobChk = document.getElementById(`mobile-${groupItem.chkId}`);
         const isChecked = (deskChk && deskChk.checked) || (mobChk && mobChk.checked);
 
-        // Abaikan sepenuhnya jika tidak dicentang (agar teks invoice aslinya tidak berubah)
         if (isChecked) { 
             adaYangDiproses = true;
             
@@ -2762,11 +3228,22 @@ window.prosesUpdateTerpilihLangsung = async function() {
                 const namaBrg = (item.nama || "").toUpperCase();
 
                 if (!updatesMap[t.id]) {
-                    updatesMap[t.id] = { id: t.id, selectedItems: [], invoiceTexts: {} };
+                    updatesMap[t.id] = { id: t.id, selectedItems: [], invoiceTexts: {}, priceUpdates: {} };
                 }
                 
                 updatesMap[t.id].selectedItems.push(namaBrg);
                 updatesMap[t.id].invoiceTexts[namaBrg] = globalInvoice || item.invoice || "SUDAH REKAP"; 
+                
+                if (groupItem.isPriceEdited) {
+                    updatesMap[t.id].priceUpdates[namaBrg] = groupItem.newPrice;
+                    txWithPriceChange.add(t.id);
+                    customersToFetch.add(t.sub);
+                    editedPricesMap.push({
+                        nama_barang: namaBrg,
+                        newPrice: groupItem.newPrice,
+                        pelanggan: t.sub
+                    });
+                }
             });
         }
     });
@@ -2774,12 +3251,66 @@ window.prosesUpdateTerpilihLangsung = async function() {
     if (!adaYangDiproses) return alert("Silakan centang minimal satu produk untuk diproses.");
 
     showLoading(true);
-    let updatesArray = Object.values(updatesMap);
 
+    // 2. OTOMATIS UPDATE HARGA KHUSUS TOKO DI TABEL STOK
+    if (customersToFetch.size > 0) {
+        try {
+            const { data: pelangganData } = await supabaseClient
+                .from('pelanggan')
+                .select('nama, is_toko, kode_toko')
+                .in('nama', Array.from(customersToFetch));
+            
+            if (pelangganData) {
+                const tokoMap = {}; 
+                pelangganData.forEach(p => {
+                    if (p.is_toko && p.kode_toko) tokoMap[p.nama] = p.kode_toko;
+                });
+
+                const uniqueEditedProducts = [...new Set(editedPricesMap.filter(e => tokoMap[e.pelanggan]).map(e => e.nama_barang))];
+                
+                if (uniqueEditedProducts.length > 0) {
+                    const { data: stokData } = await supabaseClient
+                        .from('stok')
+                        .select('id, nama_barang, harga_toko')
+                        .in('nama_barang', uniqueEditedProducts);
+
+                    if (stokData) {
+                        for (let stokRow of stokData) {
+                            let currentHargaToko = stokRow.harga_toko || {};
+                            let isChanged = false;
+
+                            editedPricesMap.forEach(e => {
+                                if (e.nama_barang === stokRow.nama_barang && tokoMap[e.pelanggan]) {
+                                    const kode = tokoMap[e.pelanggan];
+                                    if (currentHargaToko[kode] !== e.newPrice) {
+                                        currentHargaToko[kode] = e.newPrice;
+                                        isChanged = true;
+                                    }
+                                }
+                            });
+
+                            if (isChanged) {
+                                await supabaseClient.from('stok').update({ harga_toko: currentHargaToko }).eq('id', stokRow.id);
+                            }
+                        }
+
+                        if (typeof fetchMasterStock === 'function') {
+                await fetchMasterStock();
+            }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Gagal update harga stok toko:", e);
+        }
+    }
+
+    let updatesArray = Object.values(updatesMap);
     let finalPayloadUpdates = [];
     let pendingMemoryUpdates = [];
+    let dbDirectUpdates = [];
 
-    // 2. Siapkan data final untuk server
+    // 3. Siapkan Pembaruan Transaksi Ke Database
     updatesArray.forEach(u => {
        let target = allTransactions.find(x => x.id === u.id);
        if (target) { 
@@ -2787,65 +3318,74 @@ window.prosesUpdateTerpilihLangsung = async function() {
            const isString = typeof target.detail === 'string';
            
            try { 
-               // Kloning array agar kita tidak memodifikasi memori sebelum server sukses
                items = JSON.parse(isString ? target.detail : JSON.stringify(target.detail)); 
            } catch(e) {}
            
            if (Array.isArray(items)) {
                items.forEach(item => {
                    const nmBrg = (item.nama || "").toUpperCase();
-                   
-                   // HANYA timpa data pada barang yang masuk daftar centang (selectedItems)
                    if (u.selectedItems.includes(nmBrg)) {
                        const teksKolektif = u.invoiceTexts[nmBrg];
                        const invoiceVal = teksKolektif && teksKolektif.trim() !== "" ? teksKolektif : "";
                        item.isRekap = invoiceVal !== "" ? invoiceVal : false;
                        item.invoice = invoiceVal;
+
+                       if (u.priceUpdates[nmBrg] !== undefined) {
+                           item.harga = u.priceUpdates[nmBrg];
+                       }
                    }
-                   // Barang yang tidak dicentang akan otomatis dilewati dan mempertahankan teks lamanya
                });
                
-               // Masukkan array bersih ke payload untuk Supabase
-               finalPayloadUpdates.push({
-                   id: u.id,
-                   new_detail: items 
-               });
+               // Kalkulasi Ulang Subtotal jika ada perubahan harga
+               if (txWithPriceChange.has(target.id)) {
+                   const newTotalTagihan = items.reduce((sum, it) => sum + (parseFloat(it.qty) * parseFloat(it.harga)), 0);
+                   const diskonTrx = parseFloat(target.diskon) || 0;
+                   const newTotalAkhir = Math.max(0, newTotalTagihan - diskonTrx);
+                   
+                   const targetMasuk = parseFloat(target.masuk) || 0;
+                   const targetKeluar = parseFloat(target.keluar) || 0;
 
-               // Simpan referensi memori untuk dieksekusi nanti jika server sukses
-               pendingMemoryUpdates.push({
-                   target: target,
-                   isString: isString,
-                   newItems: items
-               });
+                   dbDirectUpdates.push(
+                       supabaseClient.from('transaksi').update({
+                           detail_json: items,
+                           masuk: targetMasuk > 0 ? newTotalAkhir : 0,
+                           keluar: targetKeluar > 0 ? newTotalAkhir : 0
+                       }).eq('id', target.id)
+                   );
+
+                   target.masuk = targetMasuk > 0 ? newTotalAkhir : 0;
+                   target.keluar = targetKeluar > 0 ? newTotalAkhir : 0;
+               }
+
+               finalPayloadUpdates.push({ id: u.id, new_detail: items });
+               pendingMemoryUpdates.push({ target: target, isString: isString, newItems: items });
            }
        }
     });
 
     try {
-        const payload = { 
-            action: 'set_invoice', 
-            updates: finalPayloadUpdates 
-        };
-        
-        // 3. Eksekusi ke Supabase (Menggunakan RPC set_invoice yang sudah dibuat)
+        if (dbDirectUpdates.length > 0) {
+            await Promise.all(dbDirectUpdates);
+        }
+
+        const payload = { action: 'set_invoice', updates: finalPayloadUpdates };
         const { error: rpcError } = await supabaseClient.rpc('set_invoice', { payload: payload });
-        
         if (rpcError) throw rpcError; 
 
-        // 4. Server berhasil, aplikasikan perubahan ke UI seketika
         pendingMemoryUpdates.forEach(update => {
             update.target.detail = update.isString ? JSON.stringify(update.newItems) : update.newItems;
         });
 
+        // 4. Render ulang tampilan untuk mengembalikan input ke mode Normal
         renderTransactions();
         document.getElementById('global-invoice-input').value = ''; 
         showLoading(false);
-        alert(`Berhasil menerapkan pembaruan teks invoice ke item yang dicentang.`);
+        alert(`Berhasil memperbarui data.`);
         
     } catch (error) {
         showLoading(false);
-        console.error("Supabase RPC Error:", error);
-        alert('Terjadi kesalahan saat menyimpan data ke server. Periksa koneksi internet Anda atau hubungi administrator.');
+        console.error(error);
+        alert('Terjadi kesalahan saat menyimpan data.');
     }
 };
 
@@ -3297,9 +3837,14 @@ if ((item.isRekap && item.isRekap !== false && item.isRekap !== "false" && item.
                             <div>
                                 ${invoiceBadgeMobile}
                                 <label for="mobile-${barang.chkId}" class="font-bold text-slate-700 ${barang.isLocked ? 'cursor-default' : 'cursor-pointer'} m-0 block">${barang.nama_barang}</label>
-                                <p class="text-[10px] text-slate-500 mt-0.5">
-                                    ${barang.qty} <span class="mx-1 text-slate-300">x</span> ${formatRupiah(barang.harga)}
-                                </p>
+                                <div class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
+    ${barang.qty} <span class="text-slate-300">x</span>
+    <input type="text" id="mobile-price-${barang.chkId}" value="${formatRupiah(barang.harga).replace('Rp ', '')}" 
+        onchange="markPriceEdited('${barang.chkId}', this.value)" 
+        onfocus="this.select()"
+        class="w-16 border-b border-dashed border-slate-300 bg-transparent text-right outline-none focus:border-blue-500 font-bold text-slate-700 transition-colors"
+        ${barang.isLocked ? 'disabled' : ''}>
+</div>
                             </div>
                         </div>
                         <div class="font-black text-slate-800 text-right mt-0.5">
@@ -3336,13 +3881,14 @@ if ((item.isRekap && item.isRekap !== false && item.isRekap !== "false" && item.
                     <table class="w-full text-left border-collapse text-xs whitespace-nowrap bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <thead>
                             <tr class="bg-indigo-100 text-indigo-800">
+                           <thead>
+                            <tr class="bg-indigo-100 text-indigo-800">
                                 <th class="p-3 border-b border-indigo-200 font-bold">Tanggal</th>
                                 <th class="p-3 border-b border-indigo-200 font-bold">Pelanggan</th>
                                 <th class="p-3 border-b border-indigo-200 font-bold">Invoice</th>
                                 <th class="p-3 border-b border-indigo-200 font-bold">Barang</th>
                                 <th class="p-3 border-b border-indigo-200 font-bold text-right">Harga</th>
-                                <th class="p-3 border-b border-indigo-200 font-bold text-center">Qty</th>
-                                <th class="p-3 border-b border-indigo-200 font-bold text-right">Subtotal</th>
+                                <th class="p-3 border-b border-indigo-200 font-bold text-center">Qty</th>             <th class="p-3 border-b border-indigo-200 font-bold text-right">Subtotal</th>
                                 <th class="p-3 border-b border-indigo-200 font-bold text-right">Total Omset</th>
                             </tr>
                         </thead>
@@ -3371,7 +3917,13 @@ if ((item.isRekap && item.isRekap !== false && item.isRekap !== "false" && item.
                             ${chkElementDesktop}
                             <label for="desktop-${barang.chkId}" class="text-slate-800 font-medium m-0 ${barang.isLocked ? 'cursor-default' : 'cursor-pointer'}">${barang.nama_barang}</label>
                         </td>
-                        <td class="p-3 text-slate-500 text-right">${formatRupiah(barang.harga)}</td>
+                        <td class="p-3 text-slate-500 text-right">
+                            <input type="text" id="desktop-price-${barang.chkId}" value="${formatRupiah(barang.harga).replace('Rp ', '')}" 
+                                onchange="markPriceEdited('${barang.chkId}', this.value)" 
+                                onfocus="this.select()"
+                                class="w-20 border-b border-dashed border-slate-300 bg-transparent text-right outline-none focus:border-blue-500 font-bold text-slate-700 transition-colors"
+                                ${barang.isLocked ? 'disabled' : ''}>
+                        </td>
                         <td class="p-3 text-center font-black text-blue-600">${barang.qty}</td>
                         <td class="p-3 text-slate-600 text-right font-medium">${formatRupiah(barang.subtotal_barang)}</td>
                         <td class="p-3 font-black text-indigo-600 text-right">
@@ -3730,7 +4282,7 @@ const jamMenit = (wkt || "").substring(0, 5);
       return 'bg-slate-100 text-slate-600 ring-slate-500/10';
     };
 
-    // ===== TAMBAHAN LOGIKA CUSTOM JUDUL UNTUK BLIMI =====
+   // ===== TAMBAHAN LOGIKA CUSTOM JUDUL UNTUK BLIMI =====
     let displayTitle = t.ket; 
     
     if (currentShop.nama === 'BLIMI') {
@@ -3746,6 +4298,13 @@ const jamMenit = (wkt || "").substring(0, 5);
         
         if (firstItemName) {
             displayTitle = `${namaPelanggan} - ${firstItemName}`;
+            
+            // --- TAMBAHAN KODE UNTUK MENGEMBALIKAN TAMPILAN RESI ---
+            if (t.ket && t.ket.includes('| Resi:')) {
+                const resiText = t.ket.substring(t.ket.indexOf('| Resi:'));
+                displayTitle += ` ${resiText}`;
+            }
+            // -------------------------------------------------------
         }
     }
     // =====================================================
@@ -4713,27 +5272,19 @@ function updateStateAndRenderUI(action, trxId, payload) {
 
 async function fetchMasterStock() {
   try {
-    // Mengambil data langsung dari tabel 'stok'
-    // Sesuaikan nama kolom di dalam .select() dengan nama kolom di database PostgreSQL Anda
-    const { data, error } = await supabaseClient
-      .from('stok')
-      .select('nama_barang, kategori, harga_jual_umum, harga_jual_reseller');
+   const { data, error } = await supabaseClient
+  .from('stok')
+  .select('nama_barang, kategori, harga_jual_umum, harga_jual_reseller, harga_toko'); // Tambahkan kolom harga_toko
 
-    if (error) {
-      throw error;
-    }
-
-    if (data && Array.isArray(data)) {
-      productMaster = data.map(item => ({
-        // Sesuaikan item.nama_barang dll dengan nama kolom di database
-        nama: String(item.nama_barang || '').toUpperCase(),
-        kategori: String(item.kategori || 'UMUM').toUpperCase(),
-        harga_umum: parseFloat(item.harga_jual_umum) || 0,
-        harga_reseller: parseFloat(item.harga_jual_reseller) || 0
-      }));
-      
-      console.log("Master stok berhasil dimuat via Supabase:", productMaster.length, "barang");
-    }
+if (data && Array.isArray(data)) {
+  productMaster = data.map(item => ({
+    nama: String(item.nama_barang || '').toUpperCase(),
+    kategori: String(item.kategori || 'UMUM').toUpperCase(),
+    harga_umum: parseFloat(item.harga_jual_umum) || 0,
+    harga_reseller: parseFloat(item.harga_jual_reseller) || 0,
+    harga_toko: item.harga_toko || {} // Petakan JSON-nya
+  }));
+}
   } catch (err) {
     console.error("Gagal ambil master stok dari Supabase:", err.message);
   }
@@ -4988,6 +5539,25 @@ function changeTab(tab) {
                     <button onclick="openModalPelanggan()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all shrink-0"><i data-lucide="edit-3" class="w-3 h-3 inline mr-1"></i> Ubah</button>
                   </div>
 
+                  <!-- Form Input Resi Barcode -->
+<div class="mt-3 mb-2 bg-white border border-slate-200 p-3 rounded-xl shadow-sm">
+  <label class="text-[10px] font-bold text-gray-400 uppercase ml-1 mb-2 block">No. Resi (Shopee/TikTok)</label>
+  <div class="flex gap-2">
+    <div class="relative flex-1">
+      <i data-lucide="barcode" class="absolute left-3 top-3 w-4 h-4 text-slate-400"></i>
+      <input type="text" id="input-resi" placeholder="Scan atau ketik resi..." 
+             class="w-full pl-9 p-2.5 border border-slate-200 rounded-lg text-sm font-semibold outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 transition-colors" readonly>
+    </div>
+    <button type="button" onclick="bukaScanner()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-lg flex items-center justify-center gap-2 font-bold text-xs active:scale-95 shadow-sm transition-all shrink-0">
+      <i data-lucide="scan" class="w-4 h-4"></i> Scan
+    </button>
+  </div>
+  <div class="flex items-center gap-2 mt-2.5 ml-1">
+    <input type="checkbox" id="cek-manual-resi" onchange="toggleManualResi()" class="w-4 h-4 accent-blue-600 cursor-pointer">
+    <label for="cek-manual-resi" class="text-[10px] font-bold text-slate-500 cursor-pointer">Input Manual Tanpa Kamera</label>
+  </div>
+</div>
+
                   ${currentShop.nama === 'BLIMI' ? '' : `
                   <div class="mt-3">
                     <label class="text-[10px] font-bold text-gray-400 uppercase ml-1 mb-2 block">Jenis Orderan</label>
@@ -5097,9 +5667,9 @@ function changeTab(tab) {
         </div>
 
         <!-- Tombol Estimasi WA -->
-        <button onclick="salinEstimasiWA()" class="flex-[0.8] md:flex-1 h-10 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-md font-black text-[9px] sm:text-[11px] active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-emerald-200 shadow-sm shrink-0 hide-on-pintas">
-            <i data-lucide="message-circle" class="w-4 h-4"></i> ESTIMASI
-        </button>
+<button onclick="salinEstimasiWA()" class="flex-[0.5] md:flex-1 h-10 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 rounded-md font-black text-[9px] sm:text-[11px] active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-emerald-200 shadow-sm shrink-0 hide-on-pintas">
+    <i data-lucide="message-circle" class="w-4 h-4"></i> ESTIMASI
+</button>
 
        <button onclick="tampilkanKonfirmasi()" class="flex-[0.5] h-10 bg-green-500 hover:bg-green-600 text-white rounded-md font-black text-[9px] sm:text-[11px] flex items-center justify-center gap-1.5 active:scale-95 transition-all shadow-sm shrink-0">
     <i data-lucide="save" class="w-4 h-4"></i> SIMPAN
@@ -5587,7 +6157,7 @@ function formatWaktuLokal(waktuString) {
     return waktuString;
 }
 
- function filterProducts() {
+function filterProducts() {
   const searchInput = document.getElementById('modal-search');
   const query = (searchInput.value || "").toUpperCase().trim();
   const list = document.getElementById('product-list');
@@ -5596,15 +6166,61 @@ function formatWaktuLokal(waktuString) {
   
   list.innerHTML = '';
   
-  // Filter dengan proteksi terhadap data null/undefined
-  const filtered = productMaster.filter(p => {
+  // 1. CARI INPUT PELANGGAN FLEKSIBEL
+  const elemPelanggan = document.getElementById('pelanggan') || document.getElementById('inputPelangganUtama');
+  const namaPelanggan = elemPelanggan ? elemPelanggan.value.trim().toUpperCase() : '';
+  
+  // 2. DETEKSI STATUS TOKO & KODE TOKO
+  let isToko = false;
+  let kodeToko = "";
+
+  if (namaPelanggan !== "") {
+      const pelObj = typeof dataPelangganGlobal !== 'undefined' ? 
+          dataPelangganGlobal.find(p => (typeof p === 'object' ? String(p.nama).trim().toUpperCase() === namaPelanggan : String(p).trim().toUpperCase() === namaPelanggan)) : null;
+
+      if (pelObj && typeof pelObj === 'object' && pelObj.is_toko) {
+          isToko = true;
+          kodeToko = pelObj.kode_toko;
+      } else {
+          const fallbackKode = namaPelanggan.toLowerCase().replace(/\s+/g, '_');
+          const daftarToko = ['shopee_blimi', 'tiktok_blimi', 'shopee_blm', 'galeri', 'ibnu_sarata'];
+          
+          if (daftarToko.includes(fallbackKode)) {
+              isToko = true;
+              kodeToko = fallbackKode;
+          }
+      }
+  }
+
+  // 3. FILTER, URUTKAN ABJAD, DAN HAPUS DUPLIKAT
+  let filtered = productMaster.filter(p => {
     const namaProduk = String(p.nama || "").toUpperCase();
     return namaProduk.includes(query);
   });
 
+  // Urutkan berdasarkan abjad (A-Z)
+  filtered.sort((a, b) => {
+    const nameA = String(a.nama || "").toUpperCase();
+    const nameB = String(b.nama || "").toUpperCase();
+    return nameA.localeCompare(nameB);
+  });
+
+  // Hapus duplikat (Tampilkan satu saja untuk barang yang sama)
+  const uniqueProducts = [];
+  const seenNames = new Set();
+  filtered.forEach(p => {
+    const namaProduk = String(p.nama || "").toUpperCase();
+    if (!seenNames.has(namaProduk)) {
+      seenNames.add(namaProduk);
+      uniqueProducts.push(p);
+    }
+  });
+  filtered = uniqueProducts;
+
+  // 4. RENDER LIST BARANG
   if (filtered.length > 0) {
-    // 1. BUAT WADAH VIRTUAL (DOCUMENT FRAGMENT)
     const fragment = document.createDocumentFragment();
+    const isPembelian = typeof activeTab !== 'undefined' && activeTab === 'pembelian';
 
     filtered.forEach(p => {
       const div = document.createElement('div');
@@ -5614,6 +6230,28 @@ function formatWaktuLokal(waktuString) {
       const katSafe = String(p.kategori || "UMUM").toUpperCase();
       const hargaU = parseFloat(p.harga_umum || p.hargaUmum) || 0;
       const hargaR = parseFloat(p.harga_reseller || p.hargaReseller) || 0;
+
+      let hargaTampil = hargaU;
+      let badgeClass = "text-blue-600";
+      // Hilangkan teks awalan, sisa "Rp" saja
+      let labelHarga = "Rp";
+
+      // TERAPKAN HARGA TOKO JIKA MEMENUHI SYARAT 
+      if (!isPembelian && isToko && kodeToko) {
+          const hargaTokoObj = typeof p.harga_toko === 'string' ? JSON.parse(p.harga_toko) : (p.harga_toko || {});
+          const hargaTokoNum = Number(hargaTokoObj[kodeToko]); 
+
+          if (hargaTokoNum > 0) {
+              hargaTampil = hargaTokoNum;
+              badgeClass = "text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200";
+              // Tetap hanya "Rp" meskipun harga toko aktif (karena instruksi bilang hilangkan kata "toko")
+              labelHarga = "Rp";
+          } else {
+              badgeClass = "text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200";
+              // Tetap hanya "Rp" (karena instruksi bilang hilangkan kata "umum")
+              labelHarga = "Rp"; 
+          }
+      }
 
       div.onclick = () => selectProduct(namaSafe, katSafe, hargaU, hargaR);
       
@@ -5630,18 +6268,18 @@ function formatWaktuLokal(waktuString) {
            </div>
         </div>
         <div class="text-right flex flex-col items-end gap-1">
-           <span class="text-[9px] font-bold text-blue-600">Rp ${hargaU.toLocaleString('id-ID')}</span>
+           ${isPembelian 
+             ? `<span class="text-[9px] font-bold text-slate-400 italic bg-slate-100 px-1.5 py-0.5 rounded">Input Manual</span>` 
+             : `<span class="text-[9px] font-bold ${badgeClass}">${labelHarga}${hargaTampil.toLocaleString('id-ID')}</span>`
+           }
            <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300"></i>
         </div>
       `;
       
-      // 2. MASUKKAN ELEMEN KE WADAH VIRTUAL (TIDAK MEMBEBANI LAYAR)
       fragment.appendChild(div);
     });
     
-    // 3. TEMPELKAN WADAH KE DOM SEKALI SAJA SETELAH LOOP SELESAI
     list.appendChild(fragment);
-
     if (btnManual) btnManual.classList.add('hidden');
   } else {
     const empty = document.createElement('div');
@@ -5662,7 +6300,7 @@ function formatWaktuLokal(waktuString) {
     }
   }
   
- if (typeof lucide !== 'undefined') {
+  if (typeof lucide !== 'undefined') {
     refreshIcons('product-list');
   }
 }
@@ -5693,12 +6331,44 @@ function selectProduct(name, category, priceUmum, priceReseller) {
 
   if (typeof activeTab !== 'undefined' && activeTab === 'pembelian') {
     // Jika Pembelian: Kosongkan harga agar user input manual harga belinya
-    inputHarga.value = "";
+    if (inputHarga) {
+      inputHarga.value = "";
+      inputHarga.readOnly = false;
+      inputHarga.classList.remove('bg-slate-100', 'cursor-not-allowed', 'text-blue-700', 'text-orange-600', 'bg-orange-50', 'border-orange-400');
+      inputHarga.onclick = null;
+      delete inputHarga.dataset.hargaNormal;
+    }
     if (infoHarga) infoHarga.classList.add('hidden');
   } else {
-    // Jika Penjualan: Default isi langsung dengan Harga Umum (Pop up confirm dihapus)
-    const defaultPrice = priceUmum || 0;
-    inputHarga.value = defaultPrice.toLocaleString('id-ID').replace(/,/g, '.');
+    // Jika Penjualan: Tentukan Harga Berdasarkan Tipe Pelanggan (Umum / Toko)
+    
+    // a. Cari data produk yang dipilih dari variabel global productMaster
+    const productObj = (typeof productMaster !== 'undefined' ? productMaster : []).find(p => p.nama === name) || { harga_jual_umum: priceUmum, harga_umum: priceUmum, harga_toko: {} };
+    
+    // b. Cari data pelanggan yang sedang aktif di form kasir
+    const elemPelanggan = document.getElementById('inputPelangganUtama');
+    const namaPelanggan = elemPelanggan ? elemPelanggan.value.trim().toUpperCase() : '';
+    const pelangganObj = typeof dataPelangganGlobal !== 'undefined' ? dataPelangganGlobal.find(p => (typeof p === 'object' ? String(p.nama).trim().toUpperCase() === namaPelanggan : String(p).trim().toUpperCase() === namaPelanggan)) : null;
+
+    // c. Tentukan harga yang berlaku (Prioritas: Harga Toko JSONB -> Harga Umum)
+    let finalPrice = priceUmum;
+    if (typeof getHargaBerlaku === 'function') {
+        finalPrice = getHargaBerlaku(productObj, pelangganObj);
+    }
+
+    const defaultPrice = finalPrice || 0;
+    if (inputHarga) {
+      inputHarga.value = defaultPrice.toLocaleString('id-ID').replace(/,/g, '.');
+      
+      // === KODE BARU: Penguncian Harga Khusus Toko & Cek Perubahan Harga ===
+      if (typeof kunciHargaKhususToko === 'function') {
+        kunciHargaKhususToko(rowId, productObj, pelangganObj);
+      }
+      if (typeof checkPriceChange === 'function') {
+        checkPriceChange(inputHarga, rowId);
+      }
+      // ===================================================================
+    }
     
     // Tampilkan label harga di bawah kolom harga untuk menjadi panduan atau opsi yang bisa di-klik
     if (infoHarga) {
@@ -5718,7 +6388,7 @@ function selectProduct(name, category, priceUmum, priceReseller) {
   closeProductModal();
   calcTotal();
 
-   setTimeout(() => {
+  setTimeout(() => {
     const qtyInput = document.querySelector(`#item-${rowId} .qty-input`);
     if (qtyInput) {
       qtyInput.focus();
@@ -5921,28 +6591,67 @@ async function runScript(actionName, payload, stayInTab) {
   }
 }
 
+window.updateHargaTokoBackground = async function(itemsToUpdate) {
+    try {
+        const names = itemsToUpdate.map(i => i.nama_barang);
+        const { data: stokData } = await supabaseClient
+            .from('stok')
+            .select('id, nama_barang, harga_toko')
+            .in('nama_barang', names);
+
+        if (stokData && stokData.length > 0) {
+            for (let stok of stokData) {
+                // Temukan inputan terbaru untuk barang ini
+                const updateInfo = itemsToUpdate.find(i => i.nama_barang === stok.nama_barang);
+                if (updateInfo) {
+                    // Tarik harga_toko lama (JSON) dan update keys-nya
+                    const currentHargaToko = stok.harga_toko || {};
+                    currentHargaToko[updateInfo.kode_toko] = updateInfo.harga_baru;
+
+                    await supabaseClient
+                        .from('stok')
+                        .update({ harga_toko: currentHargaToko })
+                        .eq('id', stok.id);
+                }
+            }
+            
+            // Sinkronkan kembali memori utama aplikasi agar transaksi selanjutnya langsung pakai harga yang baru
+            if (typeof fetchMasterStock === 'function') {
+                fetchMasterStock();
+            }
+        }
+    } catch (e) {
+        console.error("Gagal memperbarui harga khusus toko secara otomatis:", e);
+    }
+};
+
 function savePenjualan() {
- tutupKonfirmasi();
-  if (currentShop.nama === 'ADMINISTRATOR') {
+  tutupKonfirmasi();
+
+  // 1. Validasi Akses Administrator (Gunakan Safe Navigation)
+  if (currentShop && currentShop.nama === 'ADMINISTRATOR') {
     return alert("Aksi Ditolak: Administrator hanya memiliki akses untuk melihat riwayat dan memantau laporan. Silakan ganti identitas (login) ke toko Muflih Print atau Vi Printing untuk melakukan transaksi.");
   }
   
+  // 2. Validasi Kelengkapan Item
   const items = collectItems();
-  if(items.length === 0) return alert("Pilih barang terlebih dahulu!");
+  if (!items || items.length === 0) return alert("Pilih barang terlebih dahulu!");
   
-  const shopeeItems = items.filter(item => item.nama.toLowerCase().includes("tarik dana shopee"));
+  // 3. Validasi Khusus "Tarik Dana Shopee"
+  const shopeeItems = items.filter(item => item.nama && item.nama.toLowerCase().includes("tarik dana shopee"));
   if (shopeeItems.length > 0) {
     if (items.length > 1) return alert("Transaksi 'Tarik Dana Shopee' tidak boleh digabung dengan barang lain!");
     if (shopeeItems[0].qty > 1) return alert("Jumlah (Qty) untuk 'Tarik Dana Shopee' maksimal hanya 1!");
   }
 
-  const dpVal = unmask(document.getElementById('p_dp').value); // Cek nominal bayar
+  // 4. Pengambilan Data DP & Metode Pembayaran
+  const dpInput = document.getElementById('p_dp');
+  const dpVal = dpInput ? unmask(dpInput.value) : 0;
   const selectedRadio = document.querySelector('input[name="payment-method"]:checked');
 
-  // --- LOGIKA METODE PEMBAYARAN PENJUALAN ---
   let metodePembayaran = "";
   if (dpVal === 0) {
-    metodePembayaran = ""; // Biarkan kosong di database
+    metodePembayaran = ""; // Biarkan kosong di database jika tidak ada pembayaran
   } else {
     if (!selectedRadio) {
       return alert("Karena nominal DP/Bayar tidak 0, Anda wajib memilih Metode Pembayaran (Cash/Rekening)!");
@@ -5950,44 +6659,91 @@ function savePenjualan() {
     metodePembayaran = getActualCashMethod(selectedRadio.value);
   }
 
+  // 5. Validasi Option Keterangan (Blangko, Cetak Undangan, dll)
   let ketPilihan = "LAIN-LAIN"; // Default untuk BLIMI
-if (currentShop.nama !== 'BLIMI') {
-  const selectedKetOpt = document.querySelector('input[name="p_ket_opt"]:checked');
-  if (!selectedKetOpt) {
-    return alert("Silahkan pilih Keterangan (Blangko, Cetak Undangan, atau Lain-lain) terlebih dahulu!");
+  if (currentShop && currentShop.nama !== 'BLIMI') {
+    const selectedKetOpt = document.querySelector('input[name="p_ket_opt"]:checked');
+    if (!selectedKetOpt) {
+      return alert("Silahkan pilih Keterangan (Blangko, Cetak Undangan, atau Lain-lain) terlebih dahulu!");
+    }
+    ketPilihan = selectedKetOpt.value;
   }
-  ketPilihan = selectedKetOpt.value;
-}
   
-  const shopInitial = currentShop.nama ? currentShop.nama.charAt(0).toUpperCase() : '?';
-  const inputPelanggan = (document.getElementById('inputPelangganUtama').value || 'UMUM').toUpperCase();
+  // 6. Formatting Pelanggan & Keterangan Otomatis
+  const shopNama = currentShop ? currentShop.nama : '';
+  const shopInitial = shopNama ? shopNama.charAt(0).toUpperCase() : '?';
+  const pelangganElem = document.getElementById('inputPelangganUtama');
+  const inputPelanggan = (pelangganElem && pelangganElem.value.trim() ? pelangganElem.value.trim() : 'UMUM').toUpperCase();
   
-  // LOGIKA BARU: Jika nama toko adalah BLIMI, maka gunakan nama pelanggan asli saja
-  let pelangganFormatted = currentShop.nama === 'BLIMI' ? inputPelanggan : `${inputPelanggan} (${shopInitial})`;
+  // Tambahkan inisial toko jika bukan BLIMI
+  let pelangganFormatted = shopNama === 'BLIMI' ? inputPelanggan : `${inputPelanggan} (${shopInitial})`;
+  
   let namaItemPertama = items.length > 0 ? items[0].nama : "";
-let keteranganOtomatis = namaItemPertama ? `${ketPilihan} - ${namaItemPertama}` : ketPilihan;
+  let keteranganOtomatis = namaItemPertama ? `${ketPilihan} - ${namaItemPertama}` : ketPilihan;
 
-  const shopee1 = items.find(item => item.nama.toLowerCase() === "tarik dana shopee1");
-  const shopee2 = items.find(item => item.nama.toLowerCase() === "tarik dana shopee2");
+  // 7. Pengolahan Input Resi
+  const resiElem = document.getElementById('input-resi');
+  const resiInput = resiElem ? resiElem.value.trim() : '';
+  const isManualResi = document.getElementById('cek-manual-resi')?.checked || false;
+
+  if (resiInput !== '') {
+    const tandaManual = isManualResi ? " [Input Manual]" : "";
+    keteranganOtomatis += ` | Resi: ${resiInput}${tandaManual}`;
+  }
+
+  // 8. Penanganan Khusus Tarik Dana Shopee 1 & 2
+  const shopee1 = items.find(item => item.nama && item.nama.toLowerCase() === "tarik dana shopee1");
+  const shopee2 = items.find(item => item.nama && item.nama.toLowerCase() === "tarik dana shopee2");
 
   if (shopee1 || shopee2) {
     keteranganOtomatis = shopee1 ? "Tarik Dana Shopee1" : "Tarik Dana Shopee2"; 
     pelangganFormatted = "-"; 
   }
 
- const payload = {
+  // 9. Kalkulasi Subtotal & Diskon
+  const discElem = document.getElementById('p_disc');
+  const diskonVal = discElem ? unmask(discElem.value) : 0;
+  const subtotal = items.reduce((a, b) => a + (Number(b.qty || 0) * Number(b.harga || 0)), 0);
+  
+  // Jika backend Anda membutuhkan Total setelah Diskon, gunakan ini:
+  const totalAkhir = Math.max(0, subtotal - diskonVal);
+
+  // 10. Format Waktu Klien (Aman dari Bug Koma di Browser HP)
+  const waktuKlienFormatted = new Date().toLocaleString('en-CA', { hour12: false }).replace(',', '');
+
+  // 11. Penyusunan Payload Transaksi
+  const payload = {
     action: 'processTransaction',
     type: 'PENJUALAN',
     pelanggan: pelangganFormatted, 
-    ket: keteranganOtomatis,       
+    ket: keteranganOtomatis,      
     items: items,
-    diskon: unmask(document.getElementById('p_disc').value),
+    diskon: diskonVal,
     dp: dpVal,
     metode: metodePembayaran,
-    waktu_klien: new Date().toLocaleString('en-CA', { hour12: false }) // Format: YYYY-MM-DD HH:mm:ss dari perangkat
+    total: totalAkhir, // Mengirim Total Bersih (Subtotal - Diskon)
+    waktu_klien: waktuKlienFormatted
   };
+
+  const itemsToUpdateToko = [];
+  document.querySelectorAll('[id^="item-"]').forEach(el => {
+      const inputHarga = el.querySelector('.item-price');
+      if (inputHarga && inputHarga.dataset.isTokoPending === "true") {
+          const hargaBaru = unmask(inputHarga.value);
+          const kodeToko = inputHarga.dataset.kodeToko;
+          const namaBarang = inputHarga.dataset.namaBarang;
+          // Simpan jika harga valid dan nominal lebih dari 0
+          if (hargaBaru > 0 && kodeToko && namaBarang) {
+              itemsToUpdateToko.push({ nama_barang: namaBarang, kode_toko: kodeToko, harga_baru: hargaBaru });
+          }
+      }
+  });
+
+  if (itemsToUpdateToko.length > 0) {
+      updateHargaTokoBackground(itemsToUpdateToko);
+  }
   
-  payload.total = items.reduce((a, b) => a + (b.qty * b.harga), 0);
+  // Eksekusi Simpan
   runScript('processTransaction', payload, 'penjualan');
 }
 
