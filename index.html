@@ -393,29 +393,37 @@
 </div>
 
   <!-- Modal Pemilih Barang -->
-  <div id="product-modal" class="modal-backdrop" onclick="closeProductModal(event)">
-    <div class="modal-content p-5 shadow-2xl" onclick="event.stopPropagation()">
-      <div class="flex justify-between items-center mb-4">
-        <h3 class="text-lg font-bold">Pilih Barang (Sheet Stok)</h3>
-        <button onclick="closeProductModal()" class="p-2 bg-slate-100 rounded-full">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-      <div class="relative mb-4">
-        <i data-lucide="search" class="absolute left-3 top-3.5 w-4 h-4 text-slate-400"></i>
-        <input type="text" id="modal-search" placeholder="Cari di stok atau ketik nama baru..." 
-               class="w-full p-3 pl-10 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium"
-          onkeypress="return event.charCode != 44"     
-          oninput="this.value = this.value.toUpperCase(); filterProducts()">
-      </div>
-      <div id="product-list" class="space-y-2 overflow-y-auto pr-1 mb-4 flex-1 min-h-[200px]">
-        <!-- List barang dari sheet akan muncul di sini -->
-      </div>
-      <button id="btn-manual-add" onclick="selectManual()" class="w-full p-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg hidden">
-        Gunakan "<span id="manual-text"></span>" Sebagai Barang Baru
+<div id="product-modal" class="modal-backdrop" onclick="closeProductModal(event)">
+  <div class="modal-content p-5 shadow-2xl" onclick="event.stopPropagation()">
+    
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-lg font-bold">Pilih Barang (Sheet Stok)</h3>
+      <button onclick="closeProductModal()" class="p-2 bg-slate-100 rounded-full">
+        <i data-lucide="x" class="w-5 h-5"></i>
       </button>
     </div>
+
+    <!-- Kolom Pencarian -->
+    <div class="relative mb-4">
+      <i data-lucide="search" class="absolute left-3 top-3.5 w-4 h-4 text-slate-400"></i>
+      <input type="text" id="modal-search" placeholder="Cari di stok atau ketik nama baru..." 
+             class="w-full p-3 pl-10 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 font-medium"
+             onkeypress="return event.charCode != 44"     
+             oninput="this.value = this.value.toUpperCase(); filterProducts()">
+    </div>
+
+    <!-- Tombol Tambah Barang Baru (Dipindah tepat di bawah pencarian) -->
+    <button id="btn-manual-add" onclick="selectManual()" class="w-full p-4 mb-4 bg-blue-600 text-white rounded-xl font-bold shadow-lg hidden">
+      Tambah Barang Baru
+    </button>
+
+    <!-- Daftar Barang -->
+    <div id="product-list" class="space-y-2 overflow-y-auto pr-1 mb-4 flex-1 min-h-[200px]">
+      <!-- List barang dari sheet akan muncul di sini -->
+    </div>
+    
   </div>
+</div>
 
 <div id="general-modal" class="hidden fixed inset-0 z-[999] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-md transition-all">
   
@@ -431,6 +439,14 @@
 
   </div>
 </div>
+
+<!-- TOMBOL MELAYANG TRANSAKSI BARU PELANGGAN SAMA -->
+  <div id="floating-new-trx" class="hidden fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-in fade-in slide-in-from-top-4 duration-300">
+    <button onclick="newTrxSameCustomer()" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-full shadow-lg font-bold text-[11px] flex items-center gap-2 border-[3px] border-white active:scale-95 transition-all">
+      <i data-lucide="plus-circle" class="w-4 h-4"></i>
+      <span class="tracking-wide">Transaksi Baru: <span id="floating-customer-name" class="text-blue-200 font-black"></span></span>
+    </button>
+  </div>
   
 <header class="bg-white border-b sticky top-0 z-50 p-3 shadow-sm">
   <div class="mx-auto flex justify-between items-center">
@@ -694,6 +710,25 @@ let wasSupabaseDisconnected = false;
 let localUpdatedTransactions = new Set();
 let activeTab = 'penjualan'; 
 let pendingRiwayatUpdate = false;
+
+// --- VARIABEL UNTUK FITUR TOMBOL MELAYANG TRANSAKSI BARU ---
+window.lastSuccessCustomer = "";
+window.tempLastCustomer = "";
+window.showFloatingNewTrx = false;
+
+window.newTrxSameCustomer = function() {
+    // Sembunyikan tombol melayang
+    window.showFloatingNewTrx = false;
+    document.getElementById('floating-new-trx').classList.add('hidden');
+    
+    // Pindah ke tab penjualan
+    changeTab('penjualan');
+    
+    // Arahkan langsung ke form kasir dan lewati pencarian pelanggan
+    setTimeout(() => {
+        lanjutKeFormKasir(window.lastSuccessCustomer);
+    }, 100);
+};
 
 // Membiarkan scroll halaman tetap jalan namun mematikan perubahan value angka saat di-scroll
 document.addEventListener("wheel", function(event) {
@@ -1328,6 +1363,7 @@ window.kunciHargaKhususToko = function(id, productObj, targetPelanggan) {
         inputHarga.onclick = null; 
     }
 };
+
 
 // Fungsi untuk menandai secara visual jika harga diubah dari harga dasar
 window.checkPriceChange = function(inputElem, id) {
@@ -3230,14 +3266,20 @@ window.prosesUpdateTerpilihLangsung = async function() {
                 const namaBrg = (item.nama || "").toUpperCase();
 
                 if (!updatesMap[t.id]) {
-                    updatesMap[t.id] = { id: t.id, selectedItems: [], invoiceTexts: {}, priceUpdates: {} };
+                    updatesMap[t.id] = { 
+                        id: t.id, 
+                        selectedItems: [], 
+                        invoiceTexts: {}, 
+                        priceUpdates: {},
+                        isPriceEditedFlags: {} // Flag untuk menandai barang yang harganya diedit
+                    };
                 }
                 
                 updatesMap[t.id].selectedItems.push(namaBrg);
-                updatesMap[t.id].invoiceTexts[namaBrg] = globalInvoice || item.invoice || "SUDAH REKAP"; 
                 
                 if (groupItem.isPriceEdited) {
                     updatesMap[t.id].priceUpdates[namaBrg] = groupItem.newPrice;
+                    updatesMap[t.id].isPriceEditedFlags[namaBrg] = true; // Tandai bahwa harga item ini diedit
                     txWithPriceChange.add(t.id);
                     customersToFetch.add(t.sub);
                     editedPricesMap.push({
@@ -3245,6 +3287,13 @@ window.prosesUpdateTerpilihLangsung = async function() {
                         newPrice: groupItem.newPrice,
                         pelanggan: t.sub
                     });
+                }
+
+                // Jika harga diubah & tidak ada invoice global baru, jangan paksa nilai "SUDAH REKAP"
+                if (groupItem.isPriceEdited && !globalInvoice) {
+                    updatesMap[t.id].invoiceTexts[namaBrg] = item.invoice || "";
+                } else {
+                    updatesMap[t.id].invoiceTexts[namaBrg] = globalInvoice || item.invoice || "SUDAH REKAP"; 
                 }
             });
         }
@@ -3297,8 +3346,8 @@ window.prosesUpdateTerpilihLangsung = async function() {
                         }
 
                         if (typeof fetchMasterStock === 'function') {
-                await fetchMasterStock();
-            }
+                            await fetchMasterStock();
+                        }
                     }
                 }
             }
@@ -3327,13 +3376,20 @@ window.prosesUpdateTerpilihLangsung = async function() {
                items.forEach(item => {
                    const nmBrg = (item.nama || "").toUpperCase();
                    if (u.selectedItems.includes(nmBrg)) {
-                       const teksKolektif = u.invoiceTexts[nmBrg];
-                       const invoiceVal = teksKolektif && teksKolektif.trim() !== "" ? teksKolektif : "";
-                       item.isRekap = invoiceVal !== "" ? invoiceVal : false;
-                       item.invoice = invoiceVal;
+                       const isPriceEdited = u.isPriceEditedFlags && u.isPriceEditedFlags[nmBrg];
 
+                       // A. Update harga barang jika ada perubahan
                        if (u.priceUpdates[nmBrg] !== undefined) {
                            item.harga = u.priceUpdates[nmBrg];
+                       }
+
+                       // B. Ubah status isRekap/invoice HANYA JIKA bukan sekadar perubahan harga
+                       //    (atau jika user secara sengaja mengisi input Invoice Global)
+                       if (!(isPriceEdited && !globalInvoice)) {
+                           const teksKolektif = u.invoiceTexts[nmBrg];
+                           const invoiceVal = teksKolektif && teksKolektif.trim() !== "" ? teksKolektif : "";
+                           item.isRekap = invoiceVal !== "" ? invoiceVal : false;
+                           item.invoice = invoiceVal;
                        }
                    }
                });
@@ -5456,6 +5512,19 @@ function changeTab(tab) {
   }
   
   window.activeTab = tab;
+  // --- LOGIKA TAMPIL TOMBOL MELAYANG ---
+  const floatingBtn = document.getElementById('floating-new-trx');
+  if (floatingBtn) {
+      if (tab === 'riwayat' && window.showFloatingNewTrx) {
+          document.getElementById('floating-customer-name').innerText = window.lastSuccessCustomer;
+          floatingBtn.classList.remove('hidden');
+          if (typeof lucide !== 'undefined') lucide.createIcons({ root: floatingBtn });
+      } else {
+          floatingBtn.classList.add('hidden');
+          if (tab !== 'riwayat') window.showFloatingNewTrx = false; // Reset jika user menekan menu lain secara manual
+      }
+  }
+  // -----------------------------------------------
 
   if (tab === 'riwayat') {
     menuContainer.classList.add('hidden');
@@ -6788,10 +6857,20 @@ async function runScript(actionName, payload, stayInTab) {
       isTodayDataLoaded = false;
       isMonthDataLoaded = false;
       isFullDataLoaded = false;
+      
 
       setTimeout(() => {
         showLoading(false);
         if (btn) btn.disabled = false;
+
+          // --- LOGIKA TOMBOL MELAYANG TRANSAKSI BARU ---
+      if (payload.type === 'PENJUALAN') {
+          window.lastSuccessCustomer = window.tempLastCustomer;
+          window.showFloatingNewTrx = true;
+      } else {
+          window.showFloatingNewTrx = false;
+      }
+      // ----------------------------------------------
         
         // 1. PINDAHKAN KE TAB RIWAYAT SEPERTI SEMULA
         changeTab('riwayat'); 
@@ -6900,7 +6979,8 @@ function savePenjualan() {
   const shopInitial = shopNama ? shopNama.charAt(0).toUpperCase() : '?';
   const pelangganElem = document.getElementById('inputPelangganUtama');
   const inputPelanggan = (pelangganElem && pelangganElem.value.trim() ? pelangganElem.value.trim() : 'UMUM').toUpperCase();
-  
+  window.tempLastCustomer = inputPelanggan;
+
   // Tambahkan inisial toko jika bukan BLIMI
   let pelangganFormatted = shopNama === 'BLIMI' ? inputPelanggan : `${inputPelanggan} (${shopInitial})`;
   
@@ -8425,6 +8505,8 @@ window.executeCancel = async function(id) {
       isTodayDataLoaded = false;
       isMonthDataLoaded = false;
       isFullDataLoaded = false;
+
+    
       
       // 2. Update langsung data di memori lokal agar seketika berubah
       if (typeof allTransactions !== 'undefined') {
