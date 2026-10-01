@@ -642,7 +642,7 @@
 
   <script>
  
-const CURRENT_APP_VERSION = "2026.09.21-v3.2";
+const CURRENT_APP_VERSION = "2026.10.01-v3.5";
 let allTransactions = [];
 
 // --- VARIABEL MODE PINTAS BLIMI ---
@@ -2107,7 +2107,8 @@ function showBalanceLoading(isLoading) {
 
 // Fungsi untuk memunculkan tooltip jika belum pernah ditutup hari ini
 window.checkSummaryTooltip = function() {
-    const lastSeen = localStorage.getItem('summary_tooltip_date');
+  return;  
+  const lastSeen = localStorage.getItem('summary_tooltip_date');
     const today = new Date().toISOString().split('T')[0]; 
     
     if (lastSeen !== today) {
@@ -3534,11 +3535,13 @@ window.prosesUpdateTerpilihLangsung = async function() {
                     });
                 }
 
-                // Jika harga diubah & tidak ada invoice global baru, jangan paksa nilai "SUDAH REKAP"
+                // Jika harga diubah & tidak ada invoice global baru, pertahankan teks yang lama
                 if (groupItem.isPriceEdited && !globalInvoice) {
                     updatesMap[t.id].invoiceTexts[namaBrg] = item.invoice || "";
                 } else {
-                    updatesMap[t.id].invoiceTexts[namaBrg] = globalInvoice || item.invoice || "SUDAH REKAP"; 
+                    // Murni terapkan teks HANYA dari yang diketik di kolom input.
+                    // (Menghapus teks paksaan "SUDAH REKAP")
+                    updatesMap[t.id].invoiceTexts[namaBrg] = globalInvoice; 
                 }
             });
         }
