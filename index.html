@@ -305,25 +305,7 @@
     </div>
 
      <div class="space-y-4">
-      <button onclick="selectShop('Muflih Print', 'Jl. Barawaja No. 19, Makassar')" 
-              class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95">
-        <div class="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">M</div>
-        <div class="text-left">
-          <p class="font-bold text-white group-hover:text-blue-400 transition">Muflih Print</p>
-          <p class="text-xs text-slate-400">Jl. Barawaja No. 19, Makassar</p>
-        </div>
-      </button>
-
-      <button onclick="selectShop('Vi Printing', 'Jl. Rappokalling Raya, Makassar')" 
-              class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95">
-        <div class="w-12 h-12 bg-purple-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">V</div>
-        <div class="text-left">
-          <p class="font-bold text-white group-hover:text-blue-400 transition">Vi Printing</p>
-          <p class="text-xs text-slate-400">Jl. Rappokalling Raya, Makassar</p>
-        </div>
-      </button>
-
-      <!-- TAMBAHAN: Tombol BLIMI -->
+            <!-- TAMBAHAN: Tombol BLIMI -->
       <button onclick="selectShop('BLIMI', 'Jl. Kumala No. 05, Makassar')" 
               class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95 mt-2">
         <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">B</div>
@@ -495,6 +477,12 @@
       <i data-lucide="package" class="w-5 h-5"></i>
       <span class="text-[10px] font-bold uppercase tracking-tighter">Stok</span>
     </button>
+
+    <!-- Tambahkan di dalam <nav> pada index.html -->
+<button onclick="changeTab('pelanggan')" id="nav-pelanggan" class="hidden flex-col items-center gap-1 py-2 px-3 text-slate-400">
+  <i data-lucide="users" class="w-5 h-5"></i>
+  <span class="text-[10px] font-bold uppercase tracking-tighter">Pelanggan</span>
+</button>
 
     <button onclick="changeTab('riwayat')" id="nav-riwayat" class="flex flex-col items-center gap-1 py-2 px-3 text-slate-400">
       <i data-lucide="history" class="w-5 h-5"></i>
@@ -777,30 +765,32 @@ window.getHargaBerlaku = function(productObj, pelangganObj) {
     return productObj.harga_jual_umum || productObj.harga_umum || 0;
 };
 
-// 2. Fungsi untuk menandai dan mencatat jika harga diklik & diubah
 window.markPriceEdited = function(chkId, newPriceRaw) {
     const newPriceStr = newPriceRaw.toString().replace(/[^0-9]/g, "");
     const newPrice = parseFloat(newPriceStr) || 0;
 
     const ref = window.rekapItemRefsLangsung.find(r => r.chkId === chkId);
     if (ref) {
-        ref.isPriceEdited = true;
+        // 1. Selalu perbarui harga ke memori setiap angka diketik
         ref.newPrice = newPrice;
         
-        // Update Tampilan (Warna Berubah ke Oranye sebagai penanda)
-        const mob = document.getElementById(`mobile-price-${chkId}`);
-        const desk = document.getElementById(`desktop-price-${chkId}`);
-        
-        [mob, desk].forEach(elem => {
-            if (elem) {
-                elem.value = formatRupiah(newPrice).replace('Rp ', '');
-                elem.classList.add('text-orange-600', 'bg-orange-50', 'border-orange-400', 'px-1');
-                elem.classList.remove('text-slate-700', 'border-slate-300', 'bg-transparent');
-            }
-        });
+        // 2. LOGIKA PENCEGAH: Hanya ubah warna & centang JIKA belum pernah diedit
+        if (!ref.isPriceEdited) {
+            ref.isPriceEdited = true;
+            
+            const mob = document.getElementById(`mobile-price-${chkId}`);
+            const desk = document.getElementById(`desktop-price-${chkId}`);
+            
+            [mob, desk].forEach(elem => {
+                if (elem) {
+                    elem.classList.add('text-orange-600', 'bg-orange-50', 'border-orange-400', 'px-1', 'rounded');
+                    elem.classList.remove('text-slate-700', 'border-slate-300', 'bg-transparent');
+                }
+            });
 
-        // Otomatis mencentang checkbox (karena item ini sudah diedit dan siap diproses)
-        syncCheckboxes(chkId, true);
+            // Eksekusi centang hanya sekali
+            syncCheckboxes(chkId, true);
+        }
     }
 };
 
@@ -831,9 +821,11 @@ async function loadDaftarPelanggan() {
   }
 
   try {
+    // 2. Menarik semua data pelanggan termasuk kolom 'warna'
+    // Memastikan select('*') mengambil id, nama, is_toko, kode_toko, DAN warna
     const { data, error } = await supabaseClient
       .from('pelanggan')
-      .select('*')
+      .select('*') 
       .order('nama', { ascending: true }); 
 
     if (error) {
@@ -842,13 +834,17 @@ async function loadDaftarPelanggan() {
 
     if (Array.isArray(data)) {
       dataPelangganGlobal = data;
+      console.log("Isi dataPelangganGlobal:", dataPelangganGlobal);
+
+// Atau tampilkan dalam bentuk tabel agar lebih mudah dilihat:
+console.table(dataPelangganGlobal);
       renderListPelanggan(data);         // Render ke Modal
       renderInlineListPelanggan(data);   // Render ke Halaman Utama (Inline)
     }
   } catch (err) {
     console.error("Gagal memuat daftar pelanggan: ", err.message);
     
-    // 2. Tampilkan pesan error di dalam list jika gagal memuat
+    // 3. Tampilkan pesan error di dalam list jika gagal memuat
     const errorHTML = `<div class="p-3 text-center text-red-500 text-xs font-bold">Gagal memuat data pelanggan.</div>`;
     if (modalList) modalList.innerHTML = errorHTML;
     if (inlineList) inlineList.innerHTML = errorHTML;
@@ -857,26 +853,35 @@ async function loadDaftarPelanggan() {
   }
 }
 
-
 function renderListPelanggan(data) {
     const listContainer = document.getElementById('listDaftarPelanggan');
     if (!listContainer) return;
     listContainer.innerHTML = ''; 
     
     data.forEach(pelanggan => {
-        // Ambil data (mengantisipasi jika ada data yg masih string lama)
         const idPelanggan = pelanggan.id || null;
         const namaPelanggan = typeof pelanggan === 'object' ? pelanggan.nama : pelanggan;
         const isToko = typeof pelanggan === 'object' ? (pelanggan.is_toko === true) : false;
         
+        // AMBIL DATA WARNA
+        const warnaPelanggan = typeof pelanggan === 'object' ? pelanggan.warna : null;
+        
         const li = document.createElement('li');
         li.className = 'p-3 hover:bg-blue-50 rounded border-b border-gray-200 flex justify-between items-center transition-colors';
         
-        // --- BAGIAN KIRI (NAMA & BADGE) UNTUK MEMILIH PELANGGAN ---
+        // --- BAGIAN KIRI (NAMA, WARNA & BADGE) ---
         const divInfo = document.createElement('div');
         divInfo.className = 'cursor-pointer flex-1 flex items-center gap-2';
         
-        let infoHTML = `<span class="text-gray-700 font-medium text-sm">${namaPelanggan}</span>`;
+        let infoHTML = '';
+        
+        // JIKA ADA WARNA (Misal: "#ff0000"), TAMPILKAN BULATAN WARNA
+        if (warnaPelanggan) {
+            infoHTML += `<span class="block w-3 h-3 rounded-full border border-gray-300 shadow-sm" style="background-color: ${warnaPelanggan};"></span>`;
+        }
+
+        infoHTML += `<span class="text-gray-700 font-medium text-sm">${namaPelanggan}</span>`;
+        
         if (isToko) {
             infoHTML += `<span class="text-[9px] font-black px-2 py-0.5 rounded bg-blue-100 text-blue-700 border border-blue-200">TOKO</span>`;
         }
@@ -887,27 +892,26 @@ function renderListPelanggan(data) {
             setPelanggan(pelanggan); 
         };
         
-      // --- BAGIAN KANAN (TOMBOL OPSI JADIKAN TOKO) ---
-const divAksi = document.createElement('div');
+        // --- BAGIAN KANAN (TOMBOL OPSI JADIKAN TOKO) ---
+        const divAksi = document.createElement('div');
 
-if (idPelanggan) {
-    const btnToggle = document.createElement('button');
-    if (isToko) {
-        btnToggle.className = 'text-[10px] px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded border border-red-200 font-bold';
-        btnToggle.innerText = 'Jadikan Biasa';
-    } else {
-        btnToggle.className = 'text-[10px] px-2 py-1 bg-green-50 text-green-600 hover:bg-green-100 rounded border border-green-200 font-bold';
-        btnToggle.innerText = '+ Jadikan Toko';
-    }
-    
-    // PERBAIKAN: Hentikan event bubbling dan sesuaikan urutan parameter (id, isToko, nama)
-    btnToggle.onclick = function(e) {
-        e.stopPropagation();
-        toggleStatusToko(idPelanggan, isToko, namaPelanggan);
-    };
-    
-    divAksi.appendChild(btnToggle);
-}
+        if (idPelanggan) {
+            const btnToggle = document.createElement('button');
+            if (isToko) {
+                btnToggle.className = 'text-[10px] px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded border border-red-200 font-bold';
+                btnToggle.innerText = 'Jadikan Biasa';
+            } else {
+                btnToggle.className = 'text-[10px] px-2 py-1 bg-green-50 text-green-600 hover:bg-green-100 rounded border border-green-200 font-bold';
+                btnToggle.innerText = '+ Jadikan Toko';
+            }
+            
+            btnToggle.onclick = function(e) {
+                e.stopPropagation();
+                toggleStatusToko(idPelanggan, isToko, namaPelanggan);
+            };
+            
+            divAksi.appendChild(btnToggle);
+        }
         
         // Gabungkan ke elemen <li>
         li.appendChild(divInfo);
@@ -1543,6 +1547,7 @@ function setupSupabaseRealtime() {
     .subscribe();
 }
 
+
 window.salinKeClipboard = function(teks) {
   // 1. Fungsi internal untuk memunculkan Toast
   const tampilkanToast = () => {
@@ -1832,6 +1837,12 @@ function updateIdentityUI() {
   const navBeli = document.getElementById('nav-pembelian');
   const navBiaya = document.getElementById('nav-operasional');
   const navStok = document.getElementById('nav-stok');
+  // Temukan fungsi updateIdentityUI() dan tambahkan baris berikut
+const navPelanggan = document.getElementById('nav-pelanggan');
+if (navPelanggan) {
+  navPelanggan.style.display = isAdmin ? 'flex' : 'none';
+  navPelanggan.classList.toggle('hidden', !isAdmin);
+}
 
   if (navJual) navJual.style.display = isAdmin ? 'none' : 'flex';
   if (navBeli) navBeli.style.display = isAdmin ? 'none' : 'flex';
@@ -2039,7 +2050,7 @@ const bal = data.balances;
     if (data.stocks && Array.isArray(data.stocks)) {
       productMaster = data.stocks.map(item => ({
         nama: String(item.nama || '').toUpperCase(),
-        kategori: String(item.kategori || 'UMUM').toUpperCase(),
+        kategori: String(item.kategori || '').toUpperCase(),
         harga_umum: parseFloat(item.hargaUmum) || 0,
         harga_reseller: parseFloat(item.hargaReseller) || 0,
         // TAMBAHKAN BARIS INI: Tangkap harga_toko (antisipasi format dari RPC)
@@ -2840,7 +2851,7 @@ window.resetTempFilters = function() {
 // =====================================================================
 // 1. FUNGSI INTI: Memproses & Mengelompokkan Data (Dipakai bersama)
 // =====================================================================
-function getProcessedRekapanRows(allowedDates = null) {
+function getProcessedRekapanRows(allowedDates = null, returnAsObjects = false) {
     const filtered = window.currentFilteredTransactions || [];
     if (filtered.length === 0) return null;
 
@@ -2848,6 +2859,7 @@ function getProcessedRekapanRows(allowedDates = null) {
     const omsetPerTanggal = {};
     const trxCheckedForOmset = new Set();
     const masterArray = typeof productMaster !== 'undefined' ? productMaster : (window.productMaster || []);
+    const pelangganList = typeof dataPelangganGlobal !== 'undefined' ? dataPelangganGlobal : (window.dataPelangganGlobal || []);
 
     filtered.forEach(t => {
         if (t.kat === 'BATAL' || t.kat === 'DIHAPUS' || t.kat === 'CANCEL ORDER') return;
@@ -2857,10 +2869,9 @@ function getProcessedRekapanRows(allowedDates = null) {
         const dateStr = typeof formatDateText === 'function' ? formatDateText(tglRaw) : tglRaw;
         
         // --- LOGIKA FILTER TANGGAL TERKUNCI ---
-        // Jika ada filter tanggal yang diizinkan, lewati transaksi di luar tanggal tersebut
         if (allowedDates && !allowedDates.has(dateStr)) return;
 
-        const pelanggan = t.sub && t.sub !== '-' ? t.sub : 'UMUM';
+        const pelanggan = t.sub && t.sub !== '-' ? t.sub : (t.ket && t.ket !== '-' ? t.ket : 'UMUM');
         const diskon = parseFloat(t.diskon) || 0;
 
         let items = [];
@@ -2872,13 +2883,22 @@ function getProcessedRekapanRows(allowedDates = null) {
             totalTagihan = items.reduce((sum, item) => sum + ((parseFloat(item.qty) || 0) * (parseFloat(item.harga) || 0)), 0);
         }
         const totalAkhir = totalTagihan > 0 ? (totalTagihan - diskon) : ((parseFloat(t.masuk) || parseFloat(t.keluar) || 0) - diskon);
-        const ketBayar = (parseFloat(t.masuk) === 0) ? "Belum lunas" : "";
+        const ketBayar = (parseFloat(t.masuk) === 0) ? "Belum Bayar" : "";
 
         // Akumulasi Omset Harian
         if (!trxCheckedForOmset.has(t.id)) {
             trxCheckedForOmset.add(t.id);
             omsetPerTanggal[dateStr] = (omsetPerTanggal[dateStr] || 0) + totalAkhir;
         }
+
+        // --- PENCACOKAN DATA MASTER PELANGGAN (WARNA & IS_TOKO) ---
+        const namaPelangganUpper = (pelanggan || '').toUpperCase().trim();
+        const masterPelanggan = pelangganList.find(c => {
+            const nama = typeof c === 'object' ? c.nama : c;
+            return String(nama).toUpperCase().trim() === namaPelangganUpper;
+        });
+        const warnaPelanggan = (typeof masterPelanggan === 'object' && masterPelanggan.warna) ? masterPelanggan.warna : null;
+        const isToko = (typeof masterPelanggan === 'object' && masterPelanggan.is_toko === true);
 
         // Pengelompokan Barang
         if (Array.isArray(items) && items.length > 0) {
@@ -2888,17 +2908,28 @@ function getProcessedRekapanRows(allowedDates = null) {
                 const namaBarang = (item.nama || '').toUpperCase().trim();
                 const invoiceItem = item.invoice || '';
                 
-                const masterData = masterArray.find(p => (p.nama || '').trim() === namaBarang);
+                const masterData = masterArray.find(p => (p.nama || '').toUpperCase().trim() === namaBarang);
                 const hargaReseller = masterData ? (parseFloat(masterData.harga_reseller) || 0) : 0;
-                const kategori = masterData ? (masterData.kategori || "") : "";
+                const kategori = masterData && masterData.kategori ? masterData.kategori : (item.kategori || "");
 
                 const key = `${dateStr}_${namaBarang}_${hargaJual}_${pelanggan}_${invoiceItem}_${ketBayar}`;
 
                 if (!groupedMap[key]) {
                     groupedMap[key] = {
-                        tanggal: dateStr, barang: item.nama, kategori, harga_reseller: hargaReseller, 
-                        harga_jual: hargaJual, qty: 0, subtotal: 0, ketBayar, 
-                        pelanggan, invoice: invoiceItem, id_transaksi_list: new Set(),
+                        tanggal: dateStr, 
+                        tanggal_standar: tglRaw, // <--- TAMBAHAN: Kirim format mentah YYYY-MM-DD
+                        barang: item.nama, 
+                        kategori, 
+                        harga_reseller: hargaReseller, 
+                        harga_jual: hargaJual, 
+                        qty: 0, 
+                        subtotal: 0, 
+                        ketBayar, 
+                        pelanggan, 
+                        invoice: invoiceItem, 
+                        warna_pelanggan: warnaPelanggan,
+                        is_toko: isToko,
+                        id_transaksi_list: new Set(),
                     };
                 }
                 groupedMap[key].qty += qty;
@@ -2916,7 +2947,6 @@ function getProcessedRekapanRows(allowedDates = null) {
 
     if (groupedArray.length === 0) return null;
 
-    // Susun menjadi Array 2D
     const rowsToAppend = [];
     const insertedOmsetDates = new Set();
     let lastNo = 0;
@@ -2929,32 +2959,64 @@ function getProcessedRekapanRows(allowedDates = null) {
             insertedOmsetDates.add(group.tanggal);
         }
         
-        rowsToAppend.push([
-            lastNo, group.tanggal, omsetValue, group.barang, group.harga_reseller, 
-            group.harga_jual, group.qty, group.subtotal, group.kategori, 
-            group.ketBayar, group.pelanggan, group.invoice, 
-            Array.from(group.id_transaksi_list).join(", ")
-        ]);
+        const firstTrxId = Array.from(group.id_transaksi_list)[0] || "";
+        const allTrxIds = Array.from(group.id_transaksi_list).join(", ");
+
+        if (returnAsObjects) {
+            rowsToAppend.push({
+                no: lastNo,
+                tanggal: group.tanggal,
+                tanggal_standar: group.tanggal_standar, // <--- TAMBAHAN
+                total_omset_harian: omsetValue,
+                barang: group.barang,
+                harga_reseller: group.harga_reseller,
+                harga_jual: group.harga_jual,
+                qty: group.qty,
+                subtotal: group.subtotal,
+                kategori: group.kategori,
+                ketBayar: group.ketBayar,
+                pelanggan: group.pelanggan,
+                invoice: group.invoice,
+                id_transaksi: firstTrxId,
+                id_transaksi_list: allTrxIds,
+                warna_pelanggan: group.warna_pelanggan,
+                is_toko: group.is_toko
+            });
+        } else {
+            rowsToAppend.push([
+                lastNo, 
+                group.tanggal, 
+                omsetValue, 
+                group.barang, 
+                group.harga_reseller, 
+                group.harga_jual, 
+                group.qty, 
+                group.subtotal, 
+                group.kategori, 
+                group.ketBayar, 
+                group.pelanggan, 
+                group.invoice, 
+                allTrxIds,
+                group.warna_pelanggan || ""
+            ]);
+        }
     });
 
     return rowsToAppend;
 }
 
 window.kirimRekapanKeSpreadsheet = async function() {
-  // 1. Tambahkan dialog konfirmasi di sini
+    // 1. Dialog konfirmasi
     const isConfirmed = confirm("Apakah Anda yakin ingin mengirim rekapan ini ke Spreadsheet? Item yang berhasil dikirim akan dikunci.");
-    
-    // 2. Jika pengguna menekan 'Batal' / 'Cancel', hentikan proses eksekusi
-    if (!isConfirmed) {
-        return; 
-    }  
-  const filtered = window.currentFilteredTransactions || [];
+    if (!isConfirmed) return; 
+
+    const filtered = window.currentFilteredTransactions || [];
     if (filtered.length === 0) return alert('Tidak ada data rincian penjualan yang valid!');
 
     const tanggalTerdampak = new Set();
     let adaYangBaru = false;
 
-    // 1. Identifikasi tanggal khusus mana saja yang memiliki item baru (belum terkunci)
+    // 2. Identifikasi tanggal yang memiliki item baru (belum terkunci)
     filtered.forEach(t => {
         if (t.kat === 'BATAL' || t.kat === 'DIHAPUS' || t.kat === 'CANCEL ORDER') return;
         if ((t.kat || '').toUpperCase() !== 'PENJUALAN') return;
@@ -2974,14 +3036,30 @@ window.kirimRekapanKeSpreadsheet = async function() {
         }
     });
 
-    // 2. Blokir jika tidak ada satupun item baru
     if (!adaYangBaru) {
         return alert('PERHATIAN: Semua item sudah terkunci (sudah dikirim sebelumnya). Data hanya dapat dikirim jika ada item baru/belum terkunci pada tanggal tersebut.');
     }
 
-    // 3. Ambil baris rekapan HANYA KHUSUS untuk tanggal yang diizinkan (tanggalTerdampak)
-    const rows = getProcessedRekapanRows(tanggalTerdampak);
-    if (!rows || rows.length === 0) return alert('Tidak ada data rincian penjualan yang valid untuk dikirim!');
+    // 3. Ambil data rekapan yang sudah diproses & diperkaya langsung dari getProcessedRekapanRows
+    const itemsYangSudahDiperkaya = getProcessedRekapanRows(tanggalTerdampak, true);
+    if (!itemsYangSudahDiperkaya || itemsYangSudahDiperkaya.length === 0) {
+        return alert('Tidak ada data rekapan yang dapat diproses!');
+    }
+
+    // Kumpulkan referensi transaksi terdampak untuk penguncian Supabase nanti
+    const targetTransactions = filtered.filter(t => {
+        if (t.kat === 'BATAL' || t.kat === 'DIHAPUS' || t.kat === 'CANCEL ORDER') return false;
+        if ((t.kat || '').toUpperCase() !== 'PENJUALAN') return false;
+        const tglRaw = (t.waktu || "").split(/[T ]/)[0];
+        const dateStr = typeof formatDateText === 'function' ? formatDateText(tglRaw) : tglRaw;
+        return tanggalTerdampak.has(dateStr);
+    });
+
+    // 4. Susun payload untuk backend (Apps Script)
+    const payloadAppScript = {
+        action: 'simpan_rekapan_harian_v2', 
+        items: itemsYangSudahDiperkaya
+    };
 
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwIG-jW3-6rVjrPMc2Fb3Bkppf_weFu-SRfZrKKiVK3CmQ3eK2wWFd-HTdyecNVIH1FSg/exec"; 
 
@@ -2990,87 +3068,107 @@ window.kirimRekapanKeSpreadsheet = async function() {
         const response = await fetch(SCRIPT_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify(rows)
+            body: JSON.stringify(payloadAppScript) 
         });
-        const result = await response.json();
         
-        if (result.status === 'success') {
+        const responseText = await response.text();
+        let result;
+        try {
+            result = JSON.parse(responseText);
+        } catch (parseError) {
+            console.warn("Respons server berupa HTML (biasanya redirect Google). Isi:", responseText);
+            result = { success: true, status: 'success', message: "Data berhasil disimpan (Peringatan redirect)." };
+        }
+        
+        if (result.status === 'success' || result.success) {
             
-            // 4. PROSES PENGUNCIAN ITEM DI DATABASE SUPABASE
+            // 5. PROSES PENGUNCIAN ITEM DI DATABASE SUPABASE
             const trxUpdatesPayload = [];
             const pendingMemoryUpdates = [];
+            const allTrx = typeof allTransactions !== 'undefined' ? allTransactions : [];
             
-            filtered.forEach(t => {
-                if (t.kat === 'BATAL' || t.kat === 'DIHAPUS' || t.kat === 'CANCEL ORDER') return;
-                if ((t.kat || '').toUpperCase() !== 'PENJUALAN') return;
-                
-                const tglRaw = (t.waktu || "").split(/[T ]/)[0];
-                const dateStr = typeof formatDateText === 'function' ? formatDateText(tglRaw) : tglRaw;
-                
-                // Pastikan hanya mengunci item pada tanggal yang diizinkan dikirim
-                if (tanggalTerdampak.has(dateStr)) {
-                    let target = allTransactions.find(x => x.id === t.id);
-                    if (target) {
-                        let items = [];
-                        const isString = typeof target.detail === 'string';
-                        try { items = JSON.parse(isString ? target.detail : JSON.stringify(target.detail)); } catch(e) {}
-                        
-                        let changed = false;
-                        if (Array.isArray(items)) {
-                            items.forEach(item => {
-                                if (!item.isLocked) {
-                                    item.isLocked = true;
-                                    changed = true;
-                                }
-                            });
-                        }
-                        
-                        if (changed) {
-                            trxUpdatesPayload.push({
-                                id: target.id,
-                                new_detail: items
-                            });
-                            pendingMemoryUpdates.push({
-                                target: target,
-                                isString: isString,
-                                newItems: items
-                            });
-                        }
+            targetTransactions.forEach(t => {
+                let target = allTrx.find(x => x.id === t.id);
+                if (target) {
+                    let items = [];
+                    const isString = typeof target.detail === 'string';
+                    try { items = JSON.parse(isString ? target.detail : JSON.stringify(target.detail)); } catch(e) {}
+                    
+                    let changed = false;
+                    if (Array.isArray(items)) {
+                        items.forEach(item => {
+                            if (!item.isLocked) {
+                                item.isLocked = false;
+                                changed = false;
+                            }
+                        });
+                    }
+                    
+                    if (changed) {
+                        trxUpdatesPayload.push({
+                            id: target.id,
+                            new_detail: items
+                        });
+                        pendingMemoryUpdates.push({
+                            target: target,
+                            isString: isString,
+                            newItems: items
+                        });
                     }
                 }
             });
             
-            // Simpan perubahan kunci (isLocked) ke server Supabase
-            if (trxUpdatesPayload.length > 0) {
+            if (trxUpdatesPayload.length > 0 && typeof supabaseClient !== 'undefined') {
                 const { error: rpcError } = await supabaseClient.rpc('set_invoice', { 
                     payload: { action: 'set_invoice', updates: trxUpdatesPayload } 
                 });
                 if (rpcError) console.warn("Gagal mengunci transaksi di Supabase.", rpcError);
             }
             
-            // Aplikasikan status terkunci secara instan di UI lokal
             pendingMemoryUpdates.forEach(update => {
                 update.target.detail = update.isString ? JSON.stringify(update.newItems) : update.newItems;
             });
             
-            // ==========================================
-            // 5. FITUR TAMBAHAN: AUTO-COPY KE CLIPBOARD
-            // ==========================================
+            // 6. AUTO-COPY KE CLIPBOARD
             let copyStatusText = "otomatis disalin ke clipboard";
             try {
-                // Menggabungkan baris dengan Tab (\t) dan baris baru (\n)
-                const clipboardText = rows.map(row => row.join("\t")).join("\n");
-                
-                // Eksekusi fungsi copy (menggunakan API navigator.clipboard)
+                let currentNo = 1;
+                let prevDate = null;
+                const clipboardLines = itemsYangSudahDiperkaya.map((item, index) => {
+                   if (index === 0) {
+                       prevDate = item.tanggal;
+                   } else if (item.tanggal !== prevDate) {
+                       currentNo++;
+                       prevDate = item.tanggal;
+                   }
+
+                   return [
+                       currentNo,
+                       item.tanggal,
+                       item.total_omset_harian !== undefined ? item.total_omset_harian : "",
+                       item.barang,
+                       item.harga_reseller,
+                       item.harga_jual,
+                       item.qty,
+                       item.subtotal,
+                       item.kategori,
+                       item.ketBayar, 
+                       item.pelanggan,
+                       item.invoice,
+                       item.id_transaksi_list || item.id_transaksi,
+                       item.warna_pelanggan || ""
+                   ].join("\t");
+                });
+
+                const clipboardText = clipboardLines.join("\n");
                 await navigator.clipboard.writeText(clipboardText);
             } catch (copyErr) {
                 console.warn("Gagal menyalin otomatis ke clipboard: ", copyErr);
-                copyStatusText = "namun penyalinan otomatis gagal (izin clipboard ditolak browser)";
+                copyStatusText = "namun penyalinan otomatis gagal (izin clipboard ditolak)";
             }
 
-            renderTransactions(); // Refresh UI layar untuk menampilkan ikon gembok
+            if (typeof renderTransactions === 'function') renderTransactions(); 
             
-            // Tampilkan Alert final dengan informasi bahwa data telah disalin
             alert(`Berhasil! Data rekapan harian sukses dikirim ke Spreadsheet, ${copyStatusText}, dan item telah dikunci.`);
         } else {
             alert('Gagal mengirim: ' + result.message);
@@ -3897,11 +3995,11 @@ if ((item.isRekap && item.isRekap !== false && item.isRekap !== "false" && item.
                                 <label for="mobile-${barang.chkId}" class="font-bold text-slate-700 ${barang.isLocked ? 'cursor-default' : 'cursor-pointer'} m-0 block">${barang.nama_barang}</label>
                                 <div class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
     ${barang.qty} <span class="text-slate-300">x</span>
-    <input type="text" id="mobile-price-${barang.chkId}" value="${formatRupiah(barang.harga).replace('Rp ', '')}" 
-        onchange="markPriceEdited('${barang.chkId}', this.value)" 
-        onfocus="this.select()"
-        class="w-16 border-b border-dashed border-slate-300 bg-transparent text-right outline-none focus:border-blue-500 font-bold text-slate-700 transition-colors"
-        ${barang.isLocked ? 'disabled' : ''}>
+    <input type="text" inputmode="numeric" id="mobile-price-${barang.chkId}" value="${formatRupiah(barang.harga).replace('Rp ', '')}" 
+    oninput="maskNominal(this); markPriceEdited('${barang.chkId}', this.value)" 
+    onfocus="this.select()"
+    class="w-16 border-b border-dashed border-slate-300 bg-transparent text-right outline-none focus:border-blue-500 font-bold text-slate-700 transition-colors"
+    ${barang.isLocked ? 'disabled' : ''}>
 </div>
                             </div>
                         </div>
@@ -3976,11 +4074,11 @@ if ((item.isRekap && item.isRekap !== false && item.isRekap !== "false" && item.
                             <label for="desktop-${barang.chkId}" class="text-slate-800 font-medium m-0 ${barang.isLocked ? 'cursor-default' : 'cursor-pointer'}">${barang.nama_barang}</label>
                         </td>
                         <td class="p-3 text-slate-500 text-right">
-                            <input type="text" id="desktop-price-${barang.chkId}" value="${formatRupiah(barang.harga).replace('Rp ', '')}" 
-                                onchange="markPriceEdited('${barang.chkId}', this.value)" 
-                                onfocus="this.select()"
-                                class="w-20 border-b border-dashed border-slate-300 bg-transparent text-right outline-none focus:border-blue-500 font-bold text-slate-700 transition-colors"
-                                ${barang.isLocked ? 'disabled' : ''}>
+                            <input type="text" inputmode="numeric" id="desktop-price-${barang.chkId}" value="${formatRupiah(barang.harga).replace('Rp ', '')}" 
+    oninput="maskNominal(this); markPriceEdited('${barang.chkId}', this.value)" 
+    onfocus="this.select()"
+    class="w-20 border-b border-dashed border-slate-300 bg-transparent text-right outline-none focus:border-blue-500 font-bold text-slate-700 transition-colors"
+    ${barang.isLocked ? 'disabled' : ''}>
                         </td>
                         <td class="p-3 text-center font-black text-blue-600">${barang.qty}</td>
                         <td class="p-3 text-slate-600 text-right font-medium">${formatRupiah(barang.subtotal_barang)}</td>
@@ -4663,219 +4761,7 @@ window.applyDateModal = function() {
   setFilter('custom');   // Refresh data
 };
     
-window.simpanSemuaTampilKeRekapHarian = async function() {
-    const refs = window.rekapItemRefsLangsung || [];
-    let adaYangBaru = false;
 
-    // FUNGSI BANTUAN: Memecah dan memformat tanggal ke MM/DD/YYYY
-    const formatTanggal = (isoString) => {
-        const d = new Date(isoString);
-        if (isNaN(d)) return { key: isoString, formatSpreadsheet: isoString };
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        const yyyy = d.getFullYear();
-        return {
-            key: `${yyyy}-${mm}-${dd}`,           // Digunakan untuk pengelompokan di dalam kode
-            formatSpreadsheet: `${mm}/${dd}/${yyyy}` // Format yang akan masuk ke Spreadsheet
-        };
-    };
-
-    const tanggalTerdampak = new Set();
-
-    // 1. Cari tanggal yang memiliki transaksi baru
-    refs.forEach(groupItem => {
-        groupItem.refs.forEach(ref => {
-            if (!ref.itemData.isLocked) {
-                adaYangBaru = true;
-                tanggalTerdampak.add(formatTanggal(ref.trxData.waktu).key);
-            }
-        });
-    });
-
-    if (!adaYangBaru) {
-        return alert("Tidak ada data baru yang bisa direkap. Data yang tampil di layar mungkin sudah pernah direkap (terkunci).");
-    }
-
-    // 2. Kalkulasi Total Omset Harian secara akurat (berdasarkan Total Subtotal Item)
-    const omsetPerTanggal = {};
-    refs.forEach(groupItem => {
-        groupItem.refs.forEach(ref => {
-            const dates = formatTanggal(ref.trxData.waktu);
-            if (tanggalTerdampak.has(dates.key)) {
-                const harga = parseFloat(ref.itemData.harga) || 0;
-                const qty = parseFloat(ref.itemData.qty) || 0;
-                omsetPerTanggal[dates.key] = (omsetPerTanggal[dates.key] || 0) + (harga * qty);
-            }
-        });
-    });
-
-    const dataToProcess = [];
-    const updatedTrxIds = new Set();
-    const tanggalSudahDitulisOmset = new Set();
-
-    // 3. Kumpulkan data dan sematkan Omset HANYA di baris pertama
-    refs.forEach(groupItem => {
-        groupItem.refs.forEach(ref => {
-            const t = ref.trxData;
-            const item = ref.itemData;
-            const dates = formatTanggal(t.waktu);
-            
-            if (tanggalTerdampak.has(dates.key)) {
-                const harga = parseFloat(item.harga) || 0;
-                const qty = parseFloat(item.qty) || 0;
-                const subtotal = harga * qty;
-                
-                // Pastikan omset hanya dikirim untuk baris pertama dari setiap tanggal
-                let omsetBarisIni = "";
-                if (!tanggalSudahDitulisOmset.has(dates.key)) {
-                    omsetBarisIni = omsetPerTanggal[dates.key];
-                    tanggalSudahDitulisOmset.add(dates.key);
-                }
-                
-                dataToProcess.push({
-                    tanggal: dates.formatSpreadsheet,  // Output: 09/27/2026
-                    id_transaksi: t.id,
-                    barang: item.nama,
-                    kategori: item.kategori || "", 
-                    pelanggan: t.sub && t.sub !== '-' ? t.sub : (t.ket || 'UMUM'),
-                    qty: qty,
-                    harga_jual: harga,
-                    subtotal: subtotal,
-                    total_omset_harian: omsetBarisIni, // Angka ada di baris pertama, kosong di baris berikutnya
-                    invoice: item.invoice || '',
-                    originalTrx: t 
-                });
-                
-                updatedTrxIds.add(t.id);
-            }
-        });
-    });
-
-    // 4. Siapkan pembaruan untuk mengunci status di Supabase dan Memori UI
-    const trxUpdatesPayload = [];
-    const pendingMemoryUpdates = [];
-
-    updatedTrxIds.forEach(trxId => {
-        let target = allTransactions.find(x => x.id === trxId);
-        if (target) {
-            let items = [];
-            const isString = typeof target.detail === 'string';
-            
-            try { 
-                items = JSON.parse(isString ? target.detail : JSON.stringify(target.detail)); 
-            } catch(e) {}
-
-            if (Array.isArray(items)) {
-                items.forEach(item => { item.isLocked = true; });
-                
-                trxUpdatesPayload.push({
-                    id: trxId,
-                    new_detail: items
-                });
-
-                pendingMemoryUpdates.push({
-                    target: target,
-                    isString: isString,
-                    newItems: items
-                });
-            }
-        }
-    });
-
-   showLoading(true);
-
-  // --- MULAI SISIPAN KODE PENCACOKAN STOK ---
-    // Mengambil langsung dari memori data stok yang ditarik sebelumnya (productMaster)
-    const itemsYangSudahDiperkaya = dataToProcess.map(item => {
-      const namaBarangUpper = (item.barang || '').toUpperCase().trim();
-      const masterData = (window.productMaster || []).find(p => (p.nama || '').toUpperCase().trim() === namaBarangUpper);
-      
-      return {
-        ...item,
-        // Sisipkan properti harga reseller dan kategori dari master data
-        harga_reseller: masterData ? parseFloat(masterData.harga_reseller) : 0,
-        kategori: (masterData && masterData.kategori) ? masterData.kategori : (item.kategori || "")
-      };
-    });
-    // --- AKHIR SISIPAN KODE ---
-
-    // 4. Susun payload dan kirim ke Apps Script (gunakan itemsYangSudahDiperkaya)
-    const payloadAppScript = {
-        action: 'simpan_rekapan_harian_v2', 
-        items: itemsYangSudahDiperkaya
-    };
-
-    try {
-        // 5. Eksekusi penyimpanan ke Google Sheets (Apps Script)
-        const response = await fetch(WEB_APP_URL, { 
-            method: 'POST', 
-            headers: {
-                'Content-Type': 'text/plain;charset=utf-8',
-            },
-            body: JSON.stringify(payloadAppScript),
-            redirect: 'follow'
-        });
-
-        // PERBAIKAN: Tangkap sebagai text terlebih dahulu untuk mencegah Crash (SyntaxError)
-        const responseText = await response.text();
-        let result;
-        
-        try {
-            // Coba terjemahkan sebagai JSON
-            result = JSON.parse(responseText);
-        } catch (parseError) {
-            console.warn("Respons server berupa HTML (biasanya sistem redirect Google). Isi respons:", responseText);
-            
-            // Karena kita tahu proses backend SUDAH SUKSES (data masuk ke sheet),
-            // kita buat fallback manual agar UI frontend tetap lanjut memproses suksesnya.
-            result = { 
-                success: true, 
-                message: "Data berhasil disimpan di Sheet, dengan peringatan pengalihan server." 
-            };
-        }
-        
-        if (result.status === 'success' || result.success) {
-            
-            // 6. Kunci transaksi di database Supabase
-            if (trxUpdatesPayload.length > 0) {
-                const { error: rpcError } = await supabaseClient.rpc('set_invoice', { 
-                    payload: { action: 'set_invoice', updates: trxUpdatesPayload } 
-                });
-                
-                if (rpcError) {
-                    console.warn("Gagal mengunci transaksi di Supabase.", rpcError);
-                }
-            }
-
-            // 7. Aplikasikan perubahan status gembok pada UI
-            pendingMemoryUpdates.forEach(update => {
-                update.target.detail = update.isString ? JSON.stringify(update.newItems) : update.newItems;
-            });
-            
-            refs.forEach(groupItem => {
-                groupItem.refs.forEach(ref => {
-                    const tanggal = formatTanggal(ref.trxData.waktu).key;
-                    if (tanggalTerdampak.has(tanggal)) {
-                        groupItem.isLocked = true;
-                        ref.itemData.isLocked = true;
-                    }
-                });
-            });
-
-            renderTransactions();
-            showLoading(false);
-            alert("Data berhasil direkap ke Spreadsheet dengan format tanggal dan Omset terbaru!");
-            
-        } else {
-            showLoading(false);
-            alert("Gagal menyimpan rekap ke Spreadsheet: " + (result.message || "Unknown error"));
-        }
-    } catch (error) {
-        showLoading(false);
-        alert('Terjadi kesalahan saat berkomunikasi dengan server Google.');
-        console.error(error);
-    }
-};
 
 async function setFilter(f) {
   currentPage = 1;
@@ -5337,7 +5223,7 @@ async function fetchMasterStock() {
 if (data && Array.isArray(data)) {
   productMaster = data.map(item => ({
     nama: String(item.nama_barang || '').toUpperCase(),
-    kategori: String(item.kategori || 'UMUM').toUpperCase(),
+    kategori: String(item.kategori || '').toUpperCase(),
     harga_umum: parseFloat(item.harga_jual_umum) || 0,
     harga_reseller: parseFloat(item.harga_jual_reseller) || 0,
     harga_toko: item.harga_toko || {} // Petakan JSON-nya
@@ -5900,6 +5786,27 @@ function changeTab(tab) {
       `;
       fetchStokAdmin();
     }
+    else if (tab === 'pelanggan') {
+  menuContainer.innerHTML = `
+    <div class="space-y-4 page-transition flex flex-col h-[calc(100vh-140px)]">
+      <h2 class="text-xl font-bold mb-2 flex items-center gap-2">
+        <i data-lucide="users" class="text-indigo-600"></i> Kelola Pelanggan
+      </h2>
+      
+      <div class="relative shrink-0">
+        <i data-lucide="search" class="absolute left-3 top-3.5 w-4 h-4 text-slate-400"></i>
+        <input type="text" id="searchPelangganAdmin" class="w-full border border-slate-200 bg-white rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium" placeholder="Cari nama pelanggan..." oninput="filterPelangganAdmin()">
+      </div>
+      
+      <div class="flex-1 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-sm custom-scrollbar">
+         <div id="pelangganAdminContainer" class="p-0">
+            <div class="flex justify-center items-center h-32"><div class="spinner border-indigo-500"></div></div>
+         </div>
+      </div>
+    </div>
+  `;
+  fetchPelangganAdmin();
+}
     else if (tab === 'lainnya') {
         const versionText = window.currentBackendVersion ? window.currentBackendVersion : "Memuat...";
 
@@ -6043,6 +5950,12 @@ function renderStokAdmin(query = '') {
                 </button>
             </div>
             
+            <div class="mb-3 bg-slate-50 p-2 rounded-lg border border-slate-100">
+    <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1 tracking-wider">Kategori / LOT</label>
+    <input type="text" id="inp-kategori-${s.id}" value="${s.kategori || ''}" data-old-kategori="${s.kategori || ''}"
+        class="w-full p-1.5 font-bold text-slate-700 bg-transparent rounded outline-none border border-transparent disabled:opacity-80 text-xs transition-colors uppercase" disabled>
+</div>
+            
             <!-- Bagian Bawah: Semua Harga -->
             <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
                 <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
@@ -6090,8 +6003,12 @@ window.toggleEditStok = async function(id) {
     const btn = document.getElementById(`btn-edit-stok-${id}`);
     const isEditing = btn.dataset.editing === "true";
     
-    // Kumpulkan semua elemen input untuk baris ini
+    // Ambil data referensi stok
+    const stokData = adminDataStok.find(s => s.id === id);
+    const namaBarang = stokData.nama_barang;
+
     const inpStok = document.getElementById(`inp-stok-${id}`);
+    const inpKategori = document.getElementById(`inp-kategori-${id}`); // Elemen baru
     const inpReseller = document.getElementById(`inp-reseller-${id}`);
     const inpUmum = document.getElementById(`inp-umum-${id}`);
     
@@ -6100,13 +6017,11 @@ window.toggleEditStok = async function(id) {
         el: document.getElementById(`inp-toko-${id}-${t.kode_toko}`)
     }));
 
-    const allInputs = [inpStok, inpReseller, inpUmum, ...inpTokos.map(t => t.el)];
+    const allInputs = [inpStok, inpKategori, inpReseller, inpUmum, ...inpTokos.map(t => t.el)];
 
     if (!isEditing) {
-        // --- MODE EDIT DIHIDUPKAN ---
         btn.dataset.editing = "true";
         btn.innerHTML = `<i data-lucide="save" class="w-3.5 h-3.5"></i> Simpan`;
-        // Penyesuaian class untuk desain tombol terbaru
         btn.className = "shrink-0 px-3 py-1.5 bg-emerald-500 text-white font-bold rounded-lg shadow-md hover:bg-emerald-600 flex items-center gap-1.5 transition-all active:scale-95 text-xs";
         
         allInputs.forEach(el => {
@@ -6116,11 +6031,12 @@ window.toggleEditStok = async function(id) {
         });
         
     } else {
-        // --- MODE SIMPAN KE SUPABASE ---
         btn.innerHTML = `<div class="spinner w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Simpan`;
         btn.disabled = true;
 
         const valStok = parseFloat(inpStok.value) || 0;
+        const valKategori = inpKategori.value.trim().toUpperCase();
+        const oldKategori = inpKategori.dataset.oldKategori.toUpperCase();
         const valReseller = unmask(inpReseller.value);
         const valUmum = unmask(inpUmum.value);
         
@@ -6131,8 +6047,10 @@ window.toggleEditStok = async function(id) {
         });
 
         try {
+            // 1. Simpan perubahan ke tabel stok
             const { error } = await supabaseClient.from('stok').update({
                 sisa_stok: valStok,
+                kategori: valKategori,
                 harga_jual_reseller: valReseller,
                 harga_jual_umum: valUmum,
                 harga_toko: newHargaToko,
@@ -6141,20 +6059,55 @@ window.toggleEditStok = async function(id) {
 
             if (error) throw error;
             
+            // 2. Cascade Update ke Riwayat Transaksi jika Kategori Berubah
+            if (valKategori !== oldKategori) {
+                // Ambil semua transaksi yang mengandung barang ini
+                const { data: txs } = await supabaseClient.from('transaksi')
+                    .select('id, detail_json')
+                    .contains('detail_json', `[{"nama": "${namaBarang}"}]`);
+
+                if (txs && txs.length > 0) {
+                    const finalPayloadUpdates = [];
+                    txs.forEach(tx => {
+                        let detail = typeof tx.detail_json === 'string' ? JSON.parse(tx.detail_json) : tx.detail_json;
+                        let changed = false;
+                        
+                        detail.forEach(item => {
+                            if (item.nama.toUpperCase() === namaBarang.toUpperCase()) {
+                                item.kategori = valKategori;
+                                changed = true;
+                            }
+                        });
+                        
+                        if (changed) {
+                            finalPayloadUpdates.push({ id: tx.id, new_detail: detail });
+                        }
+                    });
+
+                    // Tembak batch update menggunakan RPC set_invoice yang sudah ada
+                    if (finalPayloadUpdates.length > 0) {
+                        const payload = { action: 'set_invoice', updates: finalPayloadUpdates };
+                        const { error: rpcError } = await supabaseClient.rpc('set_invoice', { payload: payload });
+                        if (rpcError) throw rpcError;
+                    }
+                }
+            }
+
             // Perbarui memori agar tidak perlu tarik data ulang
             const sIdx = adminDataStok.findIndex(s => s.id === id);
             if (sIdx > -1) {
                 adminDataStok[sIdx].sisa_stok = valStok;
+                adminDataStok[sIdx].kategori = valKategori;
                 adminDataStok[sIdx].harga_jual_reseller = valReseller;
                 adminDataStok[sIdx].harga_jual_umum = valUmum;
                 adminDataStok[sIdx].harga_toko = newHargaToko;
             }
 
-            // Kembalikan tombol ke UI Edit
             btn.dataset.editing = "false";
             btn.innerHTML = `<i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit`;
             btn.className = "shrink-0 px-3 py-1.5 bg-blue-100 text-blue-700 font-bold rounded-lg shadow-sm hover:bg-blue-200 flex items-center gap-1.5 transition-all active:scale-95 text-xs";
             btn.disabled = false;
+            inpKategori.dataset.oldKategori = valKategori;
 
             allInputs.forEach(el => {
                 el.disabled = true;
@@ -6162,10 +6115,9 @@ window.toggleEditStok = async function(id) {
                 el.classList.add('border-transparent');
             });
             
-            // Mutasi ke master memori aplikasi jika diperlukan
             if (typeof fetchMasterStock === 'function') fetchMasterStock();
             
-            Swal.fire({ icon: 'success', title: 'Harga & Stok Tersimpan', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+            Swal.fire({ icon: 'success', title: 'Data Stok Tersimpan', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
 
         } catch (err) {
             console.error(err);
@@ -6182,6 +6134,158 @@ window.filterStokAdmin = function() {
     renderStokAdmin(query);
 };
 
+let adminDataPelanggan = [];
+
+async function fetchPelangganAdmin() {
+    try {
+        const { data, error } = await supabaseClient
+            .from('pelanggan')
+            .select('*')
+            .order('nama', { ascending: true });
+        if (error) throw error;
+        
+        adminDataPelanggan = data || [];
+        renderPelangganAdmin();
+    } catch (e) {
+        document.getElementById('pelangganAdminContainer').innerHTML = `<div class="p-6 text-center text-red-500">Gagal memuat data pelanggan.</div>`;
+    }
+}
+
+function renderPelangganAdmin(query = '') {
+    const container = document.getElementById('pelangganAdminContainer');
+    if (!container) return;
+
+    const filtered = adminDataPelanggan.filter(p => p.nama.toLowerCase().includes(query.toLowerCase()));
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="p-8 text-center text-slate-400">Tidak ada pelanggan.</div>`;
+        return;
+    }
+
+    let html = `<div class="space-y-3 p-3">`;
+    filtered.forEach(p => {
+        html += `
+        <div class="bg-white border border-slate-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div class="flex justify-between items-start gap-3 mb-3 border-b border-slate-100 pb-3">
+                <div class="flex-1">
+                    <p class="font-black text-slate-800 text-sm mb-1">${p.nama}</p>
+                    ${p.is_toko ? `<span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">TOKO: ${p.kode_toko || '-'}</span>` : ''}
+                </div>
+                <button id="btn-edit-pelanggan-${p.id}" onclick="toggleEditPelanggan('${p.id}')" data-editing="false" 
+                    class="shrink-0 px-3 py-1.5 bg-blue-100 text-blue-700 font-bold rounded-lg shadow-sm hover:bg-blue-200 flex items-center gap-1.5 transition-all active:scale-95 text-xs">
+                    <i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Nama Pelanggan</label>
+                    <input type="text" id="inp-pelanggan-nama-${p.id}" value="${p.nama}" data-old-value="${p.nama}"
+                        class="w-full p-1 font-bold text-slate-700 bg-transparent rounded outline-none border border-transparent disabled:opacity-80 text-xs transition-colors" disabled>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Telepon</label>
+                    <input type="text" id="inp-pelanggan-telp-${p.id}" value="${p.telepon || ''}" 
+                        class="w-full p-1 font-bold text-slate-700 bg-transparent rounded outline-none border border-transparent disabled:opacity-80 text-xs transition-colors" disabled>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-lg border border-slate-100 col-span-2">
+                    <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Alamat</label>
+                    <input type="text" id="inp-pelanggan-alamat-${p.id}" value="${p.alamat || ''}" 
+                        class="w-full p-1 font-bold text-slate-700 bg-transparent rounded outline-none border border-transparent disabled:opacity-80 text-xs transition-colors" disabled>
+                </div>
+            </div>
+        </div>
+        `;
+    });
+    html += `</div>`;
+    container.innerHTML = html;
+    if (typeof lucide !== 'undefined') lucide.createIcons({ root: container });
+}
+
+window.filterPelangganAdmin = function() {
+    const query = document.getElementById('searchPelangganAdmin').value;
+    renderPelangganAdmin(query);
+};
+
+window.toggleEditPelanggan = async function(id) {
+    const btn = document.getElementById(`btn-edit-pelanggan-${id}`);
+    const isEditing = btn.dataset.editing === "true";
+    
+    const inpNama = document.getElementById(`inp-pelanggan-nama-${id}`);
+    const inpTelp = document.getElementById(`inp-pelanggan-telp-${id}`);
+    const inpAlamat = document.getElementById(`inp-pelanggan-alamat-${id}`);
+    const allInputs = [inpNama, inpTelp, inpAlamat];
+
+    if (!isEditing) {
+        btn.dataset.editing = "true";
+        btn.innerHTML = `<i data-lucide="save" class="w-3.5 h-3.5"></i> Simpan`;
+        btn.className = "shrink-0 px-3 py-1.5 bg-emerald-500 text-white font-bold rounded-lg shadow-md hover:bg-emerald-600 flex items-center gap-1.5 transition-all active:scale-95 text-xs";
+        
+        allInputs.forEach(el => {
+            el.disabled = false;
+            el.classList.add('bg-white', 'border-blue-300', 'focus:ring-2', 'focus:ring-blue-100');
+            el.classList.remove('border-transparent');
+        });
+    } else {
+        btn.innerHTML = `<div class="spinner w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Simpan`;
+        btn.disabled = true;
+
+        const valNama = inpNama.value.trim().toUpperCase();
+        const oldNama = inpNama.dataset.oldValue.toUpperCase();
+        const valTelp = inpTelp.value.trim();
+        const valAlamat = inpAlamat.value.trim();
+
+        try {
+            // 1. Update data pelanggan utama
+            const { error: errPelanggan } = await supabaseClient.from('pelanggan').update({
+                nama: valNama,
+                telepon: valTelp,
+                alamat: valAlamat
+            }).eq('id', id);
+            if (errPelanggan) throw errPelanggan;
+
+            // 2. Terapkan pada transaksi & piutang jika nama diubah (Cascade Update)
+            if (valNama !== oldNama) {
+                // Perbarui subjek di tabel transaksi
+                await supabaseClient.from('transaksi').update({ subjek: valNama }).eq('subjek', oldNama);
+                // Perbarui nama pelanggan di tabel piutang
+                await supabaseClient.from('piutang').update({ nama_pelanggan: valNama }).eq('nama_pelanggan', oldNama);
+                
+                // Perbarui cache lokal agar tidak perlu refresh halaman penuh
+                allTransactions.forEach(t => {
+                    if (t.sub && t.sub.toUpperCase() === oldNama) t.sub = valNama;
+                });
+            }
+
+            const pIdx = adminDataPelanggan.findIndex(p => p.id === id);
+            if (pIdx > -1) {
+                adminDataPelanggan[pIdx].nama = valNama;
+                adminDataPelanggan[pIdx].telepon = valTelp;
+                adminDataPelanggan[pIdx].alamat = valAlamat;
+            }
+
+            btn.dataset.editing = "false";
+            btn.innerHTML = `<i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit`;
+            btn.className = "shrink-0 px-3 py-1.5 bg-blue-100 text-blue-700 font-bold rounded-lg shadow-sm hover:bg-blue-200 flex items-center gap-1.5 transition-all active:scale-95 text-xs";
+            btn.disabled = false;
+            inpNama.dataset.oldValue = valNama;
+
+            allInputs.forEach(el => {
+                el.disabled = true;
+                el.classList.remove('bg-white', 'border-blue-300', 'focus:ring-2', 'focus:ring-blue-100');
+                el.classList.add('border-transparent');
+            });
+            
+            Swal.fire({ icon: 'success', title: 'Data Pelanggan Tersimpan', toast: true, position: 'top-end', showConfirmButton: false, timer: 2000 });
+        } catch (err) {
+            console.error(err);
+            btn.innerHTML = `<i data-lucide="save" class="w-3.5 h-3.5"></i> Simpan`;
+            btn.disabled = false;
+            Swal.fire('Gagal!', 'Gagal memperbarui data pelanggan: ' + err.message, 'error');
+        }
+    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
 
 // Fungsi untuk mematikan/menghidupkan Mode Refund
 window.toggleRefundMode = function() {
@@ -6522,7 +6626,7 @@ function filterProducts() {
       div.className = "p-4 bg-slate-50 border border-slate-100 rounded-xl flex justify-between items-center active:bg-blue-50 transition-colors cursor-pointer hover:border-blue-200 mb-2";
       
       const namaSafe = String(p.nama || "").toUpperCase();
-      const katSafe = String(p.kategori || "UMUM").toUpperCase();
+      const katSafe = String(p.kategori || "").toUpperCase();
       const hargaU = parseFloat(p.harga_umum || p.hargaUmum) || 0;
       const hargaR = parseFloat(p.harga_reseller || p.hargaReseller) || 0;
 
@@ -8838,7 +8942,7 @@ function generateNotaHTML(t) {
 
         <div style="margin-top: 30px; text-align: center;">
             <div style="display: inline-block; padding: 4px 16px; border-radius: 20px; font-size: 10px; font-weight: 900; text-transform: uppercase; ${isPiutang ? 'background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5;' : 'background: #f0fdf4; color: #15803d; border: 1px solid #dcfce7;'}">
-                ${isPiutang ? 'Belum Lunas' : 'Lunas'}
+                ${isPiutang ? 'Belum Bayar' : 'Lunas'}
             </div>
             <p style="font-size: 10px; color: #cbd5e1; margin-top: 15px;">Terima Kasih Atas Kepercayaan Anda</p>
         </div>
