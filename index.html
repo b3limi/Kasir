@@ -305,25 +305,7 @@
     </div>
 
      <div class="space-y-4">
-      <button onclick="selectShop('Muflih Print', 'Jl. Barawaja No. 19, Makassar')" 
-              class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95">
-        <div class="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">M</div>
-        <div class="text-left">
-          <p class="font-bold text-white group-hover:text-blue-400 transition">Muflih Print</p>
-          <p class="text-xs text-slate-400">Jl. Barawaja No. 19, Makassar</p>
-        </div>
-      </button>
-
-      <button onclick="selectShop('Vi Printing', 'Jl. Rappokalling Raya, Makassar')" 
-              class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95">
-        <div class="w-12 h-12 bg-purple-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">V</div>
-        <div class="text-left">
-          <p class="font-bold text-white group-hover:text-blue-400 transition">Vi Printing</p>
-          <p class="text-xs text-slate-400">Jl. Rappokalling Raya, Makassar</p>
-        </div>
-      </button>
-
-      <!-- TAMBAHAN: Tombol BLIMI -->
+          <!-- TAMBAHAN: Tombol BLIMI -->
       <button onclick="selectShop('BLIMI', 'Jl. Kumala No. 05, Makassar')" 
               class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95 mt-2">
         <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">B</div>
@@ -642,7 +624,7 @@
 
   <script>
  
-const CURRENT_APP_VERSION = "2026.10.01-v3.5";
+const CURRENT_APP_VERSION = "2026.10.01-v3.6";
 let allTransactions = [];
 
 // --- VARIABEL MODE PINTAS BLIMI ---
@@ -3155,7 +3137,7 @@ function getProcessedRekapanRows(allowedDates = null, returnAsObjects = false) {
 
 window.kirimRekapanKeSpreadsheet = async function() {
     // 1. Dialog konfirmasi
-    const isConfirmed = confirm("Apakah Anda yakin ingin mengirim rekapan ini ke Spreadsheet? Item yang berhasil dikirim akan dikunci.");
+    const isConfirmed = confirm("Apakah Anda yakin ingin mengirim rekapan ini ke Spreadsheet?");
     if (!isConfirmed) return; 
 
     const filtered = window.currentFilteredTransactions || [];
@@ -3277,47 +3259,11 @@ window.kirimRekapanKeSpreadsheet = async function() {
                 update.target.detail = update.isString ? JSON.stringify(update.newItems) : update.newItems;
             });
             
-            // 6. AUTO-COPY KE CLIPBOARD
-            let copyStatusText = "otomatis disalin ke clipboard";
-            try {
-                let currentNo = 1;
-                let prevDate = null;
-                const clipboardLines = itemsYangSudahDiperkaya.map((item, index) => {
-                   if (index === 0) {
-                       prevDate = item.tanggal;
-                   } else if (item.tanggal !== prevDate) {
-                       currentNo++;
-                       prevDate = item.tanggal;
-                   }
-
-                   return [
-                       currentNo,
-                       item.tanggal,
-                       item.total_omset_harian !== undefined ? item.total_omset_harian : "",
-                       item.barang,
-                       item.harga_reseller,
-                       item.harga_jual,
-                       item.qty,
-                       item.subtotal,
-                       item.kategori,
-                       item.ketBayar, 
-                       item.pelanggan,
-                       item.invoice,
-                       item.id_transaksi_list || item.id_transaksi,
-                       item.warna_pelanggan || ""
-                   ].join("\t");
-                });
-
-                const clipboardText = clipboardLines.join("\n");
-                await navigator.clipboard.writeText(clipboardText);
-            } catch (copyErr) {
-                console.warn("Gagal menyalin otomatis ke clipboard: ", copyErr);
-                copyStatusText = "namun penyalinan otomatis gagal (izin clipboard ditolak)";
-            }
-
+           // 6. AUTO-COPY KE CLIPBOARD (DINONAKTIFKAN)
+            
             if (typeof renderTransactions === 'function') renderTransactions(); 
             
-            alert(`Berhasil! Data rekapan harian sukses dikirim ke Spreadsheet, ${copyStatusText}, dan item telah dikunci.`);
+            alert(`Berhasil! Data rekapan harian sukses dikirim ke Spreadsheet.`);
         } else {
             alert('Gagal mengirim: ' + result.message);
         }
