@@ -305,8 +305,7 @@
     </div>
 
      <div class="space-y-4">
-    
-      <!-- TAMBAHAN: Tombol BLIMI -->
+            <!-- TAMBAHAN: Tombol BLIMI -->
       <button onclick="selectShop('BLIMI', 'Jl. Kumala No. 05, Makassar')" 
               class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95 mt-2">
         <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">B</div>
@@ -356,7 +355,7 @@
     <!-- Input Pencarian Pelanggan -->
     <div class="relative shrink-0 mb-4">
       <i data-lucide="search" class="absolute left-3 top-3.5 w-4 h-4 text-slate-400"></i>
-      <input type="text" id="searchModalPelanggan" class="w-full border border-slate-200 bg-slate-50 rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" placeholder="Ketik Pelanggan & Tekan Enter..." oninput="filterModalPelanggan()" onkeydown="if(event.key === 'Enter') pilihPelangganManual()">
+      <input type="text" id="searchModalPelanggan" class="w-full border border-slate-200 bg-slate-50 rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" placeholder="Ketik Pelanggan & Tekan Enter..." oninput="filterModalPelanggan()" onkeyup="if(event.key === 'Enter') pilihPelangganManual()">
     </div>
     
     <!-- Daftar List Pelanggan (Bisa di-scroll, mengisi sisa ruang layar) -->
@@ -1094,12 +1093,6 @@ function filterInlinePelanggan() {
     }
 }
 
-function pilihPelangganInlineManual() {
-    const val = document.getElementById('inlineSearchPelanggan').value;
-    if(val.trim() !== '') {
-        lanjutKeFormKasir(val.trim());
-    }
-}
 
 function lanjutKeFormKasir(nama) {
     // 1. Set nama pelanggan ke input form
@@ -1125,50 +1118,6 @@ function lanjutKeFormKasir(nama) {
     }, 150);
 }
 
-async function pilihPelangganManual() {
-  const inputElem = document.getElementById('searchModalPelanggan');
-  if (!inputElem) return;
-
-  const val = inputElem.value.trim();
-  if (val === '') return;
-
-  const namaInput = val.toUpperCase();
-
-  // 1. Cek apakah pelanggan sudah ada di database lokal/master
-  let pelangganDitemukan = null;
-  if (typeof masterPelanggan !== 'undefined' && Array.isArray(masterPelanggan)) {
-    pelangganDitemukan = masterPelanggan.find(
-      p => (typeof p === 'object' ? p.nama : p).toString().toUpperCase() === namaInput
-    );
-  }
-
-  // 2. Jika pelanggan SUDAH ADA, langsung gunakan tanpa pop-up
-  if (pelangganDitemukan) {
-    setPelanggan(pelangganDitemukan);
-    selesaikanPilihManual(inputElem);
-    return;
-  }
-
-  // 3. Jika PELANGGAN BARU, munculkan Pop-Up konfirmasi
-  // Teks didesain agar jelas: OK = Biasa (Ya), Cancel = Toko (Tidak)
-  const isPelangganBiasa = confirm(`"${namaInput}" adalah pelanggan baru.\n\nApakah ini Pelanggan Biasa?\n• Klik [OK / Ya] untuk Pelanggan Biasa\n• Klik [Batal / Tidak] untuk jadikan TOKO`);
-  
-  const isToko = !isPelangganBiasa; 
-
-  // 4. Jika dia memilih Toko (Cancel/Tidak), cek limit 10 toko dulu
-  if (isToko) {
-    const totalTokoSaatIni = await getJumlahToko(); // Mengambil dari fungsi cek limit sebelumnya
-    if (totalTokoSaatIni >= 10) {
-      alert("Gagal: Kuota maksimal 10 toko sudah penuh! Pelanggan ini otomatis didaftarkan sebagai Pelanggan Biasa.");
-      // Fallback: Paksa menjadi pelanggan biasa jika kuota habis
-      prosesSetPelangganBaru(namaInput, false, inputElem);
-      return;
-    }
-  }
-
-  // 5. Eksekusi penentuan pelanggan baru sesuai pilihan
-  prosesSetPelangganBaru(namaInput, isToko, inputElem);
-}
 
 async function getJumlahToko() {
   try {
@@ -1186,30 +1135,92 @@ async function getJumlahToko() {
   }
 }
 
+// ==============================================================================
+// 1. FUNGSI UNTUK MENYIMPAN PELANGGAN BARU KE SUPABASE & MUAT ULANG
+// ==============================================================================
+async function simpanPelangganBaruKeDB(nama, isToko, kodeToko) {
+    try {
+        const { error } = await supabaseClient
+            .from('pelanggan')
+            .insert([{
+                nama: nama,
+                is_toko: isToko,
+                kode_toko: kodeToko
+            }]);
+
+        if (error) throw error;
+
+        // Jika berhasil disimpan, muat ulang daftar pelanggan agar sinkron
+        if (typeof loadDaftarPelanggan === 'function') {
+            loadDaftarPelanggan();
+        }
+        
+    } catch (error) {
+        console.error('Gagal menyimpan pelanggan ke database:', error.message);
+        Swal.fire({
+            icon: 'error',
+            title: 'Gagal Menyimpan ke Database',
+            text: 'Pelanggan baru gagal tersimpan secara permanen, namun tetap bisa digunakan untuk transaksi ini.',
+            toast: true,
+            position: 'top-end',
+            timer: 3000,
+            showConfirmButton: false
+        });
+    }
+}
+
+// ==============================================================================
+// 2. PERBARUI FUNGSI PROSES PELANGGAN INLINE (Di Halaman Utama Jual)
+// ==============================================================================
+function prosesSetPelangganBaruInline(namaInput, isToko, inputElem) {
+    const kodeToko = isToko ? namaInput.toLowerCase().replace(/[^a-z0-9]/g, '_') : null;
+    const pelangganBaruObj = {
+        nama: namaInput,
+        is_toko: isToko,
+        kode_toko: kodeToko
+    };
+
+    // 1. Masukkan ke memori global agar UI bisa langsung mendeteksi tanpa lag
+    if (typeof dataPelangganGlobal !== 'undefined') {
+        dataPelangganGlobal.push(pelangganBaruObj);
+    }
+    
+    // 2. Set sebagai pelanggan aktif di form
+    activePelangganObj = pelangganBaruObj;
+
+    // 3. Simpan ke Database secara asinkron di latar belakang & muat ulang list
+    simpanPelangganBaruKeDB(namaInput, isToko, kodeToko);
+
+    // 4. Lanjutkan proses perpindahan UI ke Kasir
+    inputElem.value = '';
+    document.getElementById('btn-inline-manual-pelanggan').classList.add('hidden');
+    lanjutKeFormKasir(namaInput);
+}
+
+// ==============================================================================
+// 3. PERBARUI FUNGSI PROSES PELANGGAN MANUAL (Di Dalam Modal Pop-Up)
+// ==============================================================================
 function prosesSetPelangganBaru(namaInput, isToko, inputElem) {
-  // Buat objek sementara agar sistem kasir (getHargaBerlaku) langsung mengenali status tokonya
-  const pelangganBaruObj = {
-    nama: namaInput,
-    is_toko: isToko,
-    kode_toko: isToko ? namaInput.toLowerCase().replace(/[^a-z0-9]/g, '_') : null
-  };
+    const kodeToko = isToko ? namaInput.toLowerCase().replace(/[^a-z0-9]/g, '_') : null;
+    const pelangganBaruObj = {
+        nama: namaInput,
+        is_toko: isToko,
+        kode_toko: kodeToko
+    };
 
-  // TAMBAHAN: Masukkan pelanggan baru ke memori global agar terdeteksi oleh modal barang
-  if (typeof dataPelangganGlobal !== 'undefined') {
-    dataPelangganGlobal.push(pelangganBaruObj);
-  }
+    // 1. Masukkan pelanggan baru ke memori global
+    if (typeof dataPelangganGlobal !== 'undefined') {
+        dataPelangganGlobal.push(pelangganBaruObj);
+    }
 
-  // Masukkan ke input form kasir
-  setPelanggan(pelangganBaruObj);
+    // 2. Masukkan ke input form kasir dan set pelanggan aktif
+    setPelanggan(pelangganBaruObj);
 
-  // Opsional namun disarankan: Langsung simpan ke Supabase secara otomatis di latar belakang
-  if (typeof simpanPelanggan === 'function') {
-     // Memanggil fungsi simpanPelanggan() dari instruksi sebelumnya
-     // null artinya ini insert baru, bukan update
-    simpanPelanggan(null, namaInput, isToko);
-  }
+    // 3. Simpan ke Database secara asinkron di latar belakang & muat ulang list
+    simpanPelangganBaruKeDB(namaInput, isToko, kodeToko);
 
-  selesaikanPilihManual(inputElem);
+    // 4. Tutup Modal
+    selesaikanPilihManual(inputElem);
 }
 
 // Fungsi Helper untuk merapikan UI setelah selesai
@@ -2518,6 +2529,30 @@ window.addEventListener('DOMContentLoaded', () => {
 
  // 4. Buka Tab Penjualan secara otomatis
   changeTab(currentShop.nama === 'ADMINISTRATOR' ? 'stok' : 'penjualan');
+
+  // 1. Event Listener untuk Input Pelanggan di Halaman Utama (Inline)
+    const inlineSearchInput = document.getElementById('inlineSearchPelanggan');
+    if (inlineSearchInput) {
+        inlineSearchInput.addEventListener('keypress', function(event) {
+            // Cek jika tombol yang ditekan adalah Enter
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Mencegah reload halaman
+                pilihPelangganInlineManual(); // Panggil fungsi memunculkan pop-up
+            }
+        });
+    }
+
+    // 2. Event Listener untuk Input Pelanggan di dalam Modal (Pop-up manual)
+    const modalSearchInput = document.getElementById('searchModalPelanggan');
+    if (modalSearchInput) {
+        modalSearchInput.addEventListener('keypress', function(event) {
+            // Cek jika tombol yang ditekan adalah Enter
+            if (event.key === 'Enter') {
+                event.preventDefault(); // Mencegah reload halaman
+                pilihPelangganManual(); // Panggil fungsi memunculkan pop-up
+            }
+        });
+    }
 
   checkPendingOrdersCount();
   
@@ -5634,7 +5669,7 @@ function changeTab(tab) {
               <label class="block text-gray-700 text-sm font-bold mb-1">Pilih / Cari Pelanggan</label>
               <div class="relative">
                 <i data-lucide="search" class="absolute left-3 top-3.5 w-4 h-4 text-slate-400"></i>
-                <input type="text" id="inlineSearchPelanggan" class="w-full border border-slate-200 bg-slate-50 rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" placeholder="Ketik Pelanggan & Tekan Enter..." oninput="filterInlinePelanggan()" onkeydown="if(event.key === 'Enter') pilihPelangganInlineManual()">
+                <input type="text" id="inlineSearchPelanggan" class="w-full border border-slate-200 bg-slate-50 rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" placeholder="Ketik Pelanggan & Tekan Enter..." oninput="filterInlinePelanggan()" onkeyup="if(event.key === 'Enter') pilihPelangganInlineManual()">
               </div>
               <div class="max-h-72 overflow-y-auto border border-slate-200 rounded-xl p-2 bg-white shadow-inner">
                 <ul id="inlineListDaftarPelanggan" class="space-y-1"></ul>
@@ -6355,7 +6390,7 @@ function renderPelangganAdmin(query = '') {
                 </button>
             </div>
             
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Nama Pelanggan</label>
                     <input type="text" id="inp-pelanggan-nama-${p.id}" value="${p.nama}" data-old-value="${p.nama}"
@@ -6366,7 +6401,12 @@ function renderPelangganAdmin(query = '') {
                     <input type="text" id="inp-pelanggan-telp-${p.id}" value="${p.telepon || ''}" 
                         class="w-full p-1 font-bold text-slate-700 bg-transparent rounded outline-none border border-transparent disabled:opacity-80 text-xs transition-colors" disabled>
                 </div>
-                <div class="bg-slate-50 p-2 rounded-lg border border-slate-100 col-span-2">
+                <div class="bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Warna Label</label>
+                    <input type="color" id="inp-pelanggan-warna-${p.id}" value="${p.warna || '#cccccc'}" 
+                        class="w-full h-6 p-0 bg-transparent rounded outline-none border border-transparent disabled:opacity-80 cursor-pointer text-xs transition-colors" disabled>
+                </div>
+                <div class="bg-slate-50 p-2 rounded-lg border border-slate-100 col-span-2 md:col-span-3">
                     <label class="block text-[9px] font-bold text-slate-400 uppercase mb-1">Alamat</label>
                     <input type="text" id="inp-pelanggan-alamat-${p.id}" value="${p.alamat || ''}" 
                         class="w-full p-1 font-bold text-slate-700 bg-transparent rounded outline-none border border-transparent disabled:opacity-80 text-xs transition-colors" disabled>
@@ -6378,6 +6418,126 @@ function renderPelangganAdmin(query = '') {
     html += `</div>`;
     container.innerHTML = html;
     if (typeof lucide !== 'undefined') lucide.createIcons({ root: container });
+}
+
+// ==============================================================================
+// 1. FUNGSI UNTUK INPUT PELANGGAN DI HALAMAN UTAMA (TAB JUAL)
+// ==============================================================================
+async function pilihPelangganInlineManual() {
+    const inputElem = document.getElementById('inlineSearchPelanggan');
+    if (!inputElem) return;
+    
+    const val = inputElem.value.trim();
+    if (val === '') return;
+    
+    const namaInput = val.toUpperCase();
+    
+    // Cek apakah pelanggan sudah ada di memori global
+    let pelangganDitemukan = null;
+    if (typeof dataPelangganGlobal !== 'undefined' && Array.isArray(dataPelangganGlobal)) {
+        pelangganDitemukan = dataPelangganGlobal.find(
+            p => (typeof p === 'object' ? p.nama : p).toString().toUpperCase() === namaInput
+        );
+    }
+    
+    // Jika sudah ada, langsung lanjut tanpa pop-up
+    if (pelangganDitemukan) {
+        lanjutKeFormKasir(pelangganDitemukan.nama);
+        inputElem.value = '';
+        document.getElementById('btn-inline-manual-pelanggan').classList.add('hidden');
+        return;
+    }
+
+    // Jika pelanggan baru, tampilkan Pop-Up konfirmasi dengan SweetAlert2
+    const result = await Swal.fire({
+        title: 'Pelanggan Baru',
+        text: `"${namaInput}" belum terdaftar di database. Silakan pilih jenis pelanggan:`,
+        icon: 'question',
+        showCancelButton: true,
+        showDenyButton: true,
+        confirmButtonText: 'Pelanggan Biasa',
+        denyButtonText: 'Pelanggan Toko',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#2563eb', // Warna Biru
+        denyButtonColor: '#10b981',    // Warna Hijau
+    });
+
+    if (result.isConfirmed) {
+        // Dieksekusi jika memilih Pelanggan Biasa
+        prosesSetPelangganBaruInline(namaInput, false, inputElem);
+    } else if (result.isDenied) {
+        // Dieksekusi jika memilih Pelanggan Toko
+        const totalTokoSaatIni = await getJumlahToko();
+        if (totalTokoSaatIni >= 10) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Batas Maksimal!',
+                text: 'Maksimal 10 toko sudah penuh! Pelanggan otomatis didaftarkan sebagai Pelanggan Biasa.'
+            });
+            prosesSetPelangganBaruInline(namaInput, false, inputElem);
+        } else {
+            prosesSetPelangganBaruInline(namaInput, true, inputElem);
+        }
+    }
+}
+
+
+// ==============================================================================
+// 2. FUNGSI UNTUK INPUT PELANGGAN DI DALAM MODAL (Agar UI Pop-up nya seragam)
+// ==============================================================================
+async function pilihPelangganManual() {
+  const inputElem = document.getElementById('searchModalPelanggan');
+  if (!inputElem) return;
+
+  const val = inputElem.value.trim();
+  if (val === '') return;
+
+  const namaInput = val.toUpperCase();
+
+  // Cek apakah pelanggan sudah ada
+  let pelangganDitemukan = null;
+  if (typeof dataPelangganGlobal !== 'undefined' && Array.isArray(dataPelangganGlobal)) {
+    pelangganDitemukan = dataPelangganGlobal.find(
+      p => (typeof p === 'object' ? p.nama : p).toString().toUpperCase() === namaInput
+    );
+  }
+
+  // Jika pelanggan SUDAH ADA, langsung gunakan
+  if (pelangganDitemukan) {
+    setPelanggan(pelangganDitemukan);
+    selesaikanPilihManual(inputElem);
+    return;
+  }
+
+  // Jika pelanggan BARU, munculkan Pop-Up SweetAlert2 yang rapi
+  const result = await Swal.fire({
+      title: 'Pelanggan Baru',
+      text: `"${namaInput}" belum terdaftar. Silakan pilih jenis pelanggan:`,
+      icon: 'question',
+      showCancelButton: true,
+      showDenyButton: true,
+      confirmButtonText: 'Pelanggan Biasa',
+      denyButtonText: 'Pelanggan Toko',
+      cancelButtonText: 'Batal',
+      confirmButtonColor: '#2563eb',
+      denyButtonColor: '#10b981',
+  });
+
+  if (result.isConfirmed) {
+      prosesSetPelangganBaru(namaInput, false, inputElem);
+  } else if (result.isDenied) {
+      const totalTokoSaatIni = await getJumlahToko();
+      if (totalTokoSaatIni >= 10) {
+          Swal.fire({
+              icon: 'warning',
+              title: 'Batas Maksimal!',
+              text: 'Maksimal 10 toko sudah penuh! Pelanggan otomatis didaftarkan sebagai Pelanggan Biasa.'
+          });
+          prosesSetPelangganBaru(namaInput, false, inputElem);
+      } else {
+          prosesSetPelangganBaru(namaInput, true, inputElem);
+      }
+  }
 }
 
 window.filterPelangganAdmin = function() {
@@ -6392,7 +6552,8 @@ window.toggleEditPelanggan = async function(id) {
     const inpNama = document.getElementById(`inp-pelanggan-nama-${id}`);
     const inpTelp = document.getElementById(`inp-pelanggan-telp-${id}`);
     const inpAlamat = document.getElementById(`inp-pelanggan-alamat-${id}`);
-    const allInputs = [inpNama, inpTelp, inpAlamat];
+    const inpWarna = document.getElementById(`inp-pelanggan-warna-${id}`); // Input Warna
+    const allInputs = [inpNama, inpTelp, inpAlamat, inpWarna];
 
     if (!isEditing) {
         btn.dataset.editing = "true";
@@ -6412,36 +6573,55 @@ window.toggleEditPelanggan = async function(id) {
         const oldNama = inpNama.dataset.oldValue.toUpperCase();
         const valTelp = inpTelp.value.trim();
         const valAlamat = inpAlamat.value.trim();
+        const valWarna = inpWarna.value; // Nilai warna baru
 
         try {
-            // 1. Update data pelanggan utama
+            // 1. Update data pelanggan utama di Supabase
             const { error: errPelanggan } = await supabaseClient.from('pelanggan').update({
                 nama: valNama,
                 telepon: valTelp,
-                alamat: valAlamat
+                alamat: valAlamat,
+                warna: valWarna // Kirim warna ke database
             }).eq('id', id);
             if (errPelanggan) throw errPelanggan;
 
             // 2. Terapkan pada transaksi & piutang jika nama diubah (Cascade Update)
             if (valNama !== oldNama) {
-                // Perbarui subjek di tabel transaksi
                 await supabaseClient.from('transaksi').update({ subjek: valNama }).eq('subjek', oldNama);
-                // Perbarui nama pelanggan di tabel piutang
                 await supabaseClient.from('piutang').update({ nama_pelanggan: valNama }).eq('nama_pelanggan', oldNama);
                 
-                // Perbarui cache lokal agar tidak perlu refresh halaman penuh
+                // Perbarui cache lokal
                 allTransactions.forEach(t => {
                     if (t.sub && t.sub.toUpperCase() === oldNama) t.sub = valNama;
                 });
             }
 
+            // 3. Perbarui state Admin Pelanggan
             const pIdx = adminDataPelanggan.findIndex(p => p.id === id);
             if (pIdx > -1) {
                 adminDataPelanggan[pIdx].nama = valNama;
                 adminDataPelanggan[pIdx].telepon = valTelp;
                 adminDataPelanggan[pIdx].alamat = valAlamat;
+                adminDataPelanggan[pIdx].warna = valWarna; 
+            }
+            
+            // 4. Perbarui Global State (Agar perubahan warna langsung terlihat di Kasir)
+            if (typeof dataPelangganGlobal !== 'undefined') {
+                const globalIdx = dataPelangganGlobal.findIndex(p => p.id === id);
+                if (globalIdx > -1) {
+                    dataPelangganGlobal[globalIdx].nama = valNama;
+                    dataPelangganGlobal[globalIdx].telepon = valTelp;
+                    dataPelangganGlobal[globalIdx].alamat = valAlamat;
+                    dataPelangganGlobal[globalIdx].warna = valWarna;
+                    
+                    // Render ulang modal pelanggan
+                    if (typeof renderListPelanggan === 'function') {
+                        renderListPelanggan(dataPelangganGlobal);
+                    }
+                }
             }
 
+            // Kembalikan tombol ke mode Edit
             btn.dataset.editing = "false";
             btn.innerHTML = `<i data-lucide="edit-3" class="w-3.5 h-3.5"></i> Edit`;
             btn.className = "shrink-0 px-3 py-1.5 bg-blue-100 text-blue-700 font-bold rounded-lg shadow-sm hover:bg-blue-200 flex items-center gap-1.5 transition-all active:scale-95 text-xs";
