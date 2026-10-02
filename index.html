@@ -305,7 +305,8 @@
     </div>
 
      <div class="space-y-4">
-           <!-- TAMBAHAN: Tombol BLIMI -->
+    
+      <!-- TAMBAHAN: Tombol BLIMI -->
       <button onclick="selectShop('BLIMI', 'Jl. Kumala No. 05, Makassar')" 
               class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95 mt-2">
         <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">B</div>
@@ -631,7 +632,7 @@
 
   <script>
  
-const CURRENT_APP_VERSION = "2026.10.01-v3.6";
+const CURRENT_APP_VERSION = "2026.10.01-v3.5";
 let allTransactions = [];
 
 // --- VARIABEL MODE PINTAS BLIMI ---
@@ -2497,8 +2498,7 @@ function checkAndResetTooltips() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  setupSupabaseRealtime();
-  checkAppVersionOnWake();
+    checkAppVersionOnWake();
   // 0. Jalankan pengecekan reset tooltip otomatis
   checkAndResetTooltips();
 
