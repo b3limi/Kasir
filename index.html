@@ -305,7 +305,7 @@
     </div>
 
      <div class="space-y-4">
-          <!-- TAMBAHAN: Tombol BLIMI -->
+           <!-- TAMBAHAN: Tombol BLIMI -->
       <button onclick="selectShop('BLIMI', 'Jl. Kumala No. 05, Makassar')" 
               class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95 mt-2">
         <div class="w-12 h-12 bg-blue-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">B</div>
@@ -593,9 +593,15 @@
         <!-- Form Input Barang -->
         <div class="p-4 overflow-y-auto flex-1 space-y-4">
             <div>
-                <label class="block text-[11px] font-bold text-slate-500 mb-1">NAMA BARANG <span class="text-red-500">*</span></label>
-                <input type="text" id="add-nama-barang" class="w-full p-2.5 border border-slate-200 rounded-xl text-sm font-bold uppercase outline-none focus:ring-2 focus:ring-blue-400" placeholder="Contoh: TINTA EPSON 664 HITAM">
-            </div>
+    <label class="block text-[11px] font-bold text-slate-500 mb-1">NAMA BARANG <span class="text-red-500">*</span></label>
+    <!-- Tambahkan oninput="cekNamaBarang()" -->
+    <input type="text" id="add-nama-barang" oninput="cekNamaBarang()" class="w-full p-2.5 border border-slate-200 rounded-xl text-sm font-bold uppercase outline-none focus:ring-2 focus:ring-blue-400 transition-colors" placeholder="Contoh: TINTA EPSON 664 HITAM">
+    
+    <!-- Tambahkan Elemen Peringatan Tersembunyi (Hidden) -->
+    <p id="warning-nama-barang" class="hidden text-[10px] font-bold text-red-500 mt-1 flex items-center gap-1">
+        <i data-lucide="alert-circle" class="w-3 h-3"></i> Nama barang sudah ada di database!
+    </p>
+</div>
             <div>
                 <label class="block text-[11px] font-bold text-slate-500 mb-1">KATEGORI</label>
                 <input type="text" id="add-kategori-barang" class="w-full p-2.5 border border-slate-200 rounded-xl text-sm font-bold uppercase outline-none focus:ring-2 focus:ring-blue-400" placeholder="Contoh: TINTA">
@@ -614,11 +620,12 @@
 
         <!-- Tombol Aksi -->
         <div class="p-4 border-t bg-white rounded-b-2xl flex gap-3">
-            <button onclick="closeModalTambahBarang()" class="flex-1 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all">Batal</button>
-            <button onclick="simpanBarangBaru()" class="flex-[1.5] py-2.5 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 active:scale-95 transition-all flex justify-center items-center gap-2">
-                <i data-lucide="save" class="w-4 h-4"></i> Simpan
-            </button>
-        </div>
+    <button onclick="closeModalTambahBarang()" class="flex-1 py-2.5 rounded-xl font-bold text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all">Batal</button>
+    <!-- Tambahkan id="btn-simpan-barang" -->
+    <button id="btn-simpan-barang" onclick="simpanBarangBaru()" class="flex-[1.5] py-2.5 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 active:scale-95 transition-all flex justify-center items-center gap-2">
+        <i data-lucide="save" class="w-4 h-4"></i> Simpan
+    </button>
+</div>
     </div>
 </div>
 
@@ -1916,10 +1923,23 @@ if (navPelanggan) {
 // --- FUNGSI MODAL TAMBAH BARANG BARU ---
 window.openModalTambahBarang = function() {
     // Kosongkan form setiap kali modal dibuka
-    document.getElementById('add-nama-barang').value = '';
+    const inputNama = document.getElementById('add-nama-barang');
+    inputNama.value = '';
     document.getElementById('add-kategori-barang').value = '';
     document.getElementById('add-harga-umum').value = '';
     document.getElementById('add-stok-awal').value = '0';
+    
+    // -- KODE TAMBAHAN UNTUK MERESET VALIDASI --
+    const warningText = document.getElementById('warning-nama-barang');
+    const btnSimpan = document.getElementById('btn-simpan-barang');
+    if(warningText) warningText.classList.add('hidden');
+    inputNama.classList.remove('border-red-500', 'focus:ring-red-400');
+    inputNama.classList.add('border-slate-200', 'focus:ring-blue-400');
+    if(btnSimpan) {
+        btnSimpan.disabled = false;
+        btnSimpan.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+    // -----------------------------------------
     
     // Tampilkan modal
     document.getElementById('modal-tambah-barang').classList.remove('hidden');
@@ -1932,6 +1952,47 @@ window.openModalTambahBarang = function() {
 
 window.closeModalTambahBarang = function() {
     document.getElementById('modal-tambah-barang').classList.add('hidden');
+};
+
+window.cekNamaBarang = function() {
+    const inputNama = document.getElementById('add-nama-barang');
+    const warningText = document.getElementById('warning-nama-barang');
+    const btnSimpan = document.getElementById('btn-simpan-barang');
+    const namaInput = inputNama.value.trim().toUpperCase();
+
+    // Jika input kosong, reset ke tampilan normal
+    if (!namaInput) {
+        warningText.classList.add('hidden');
+        inputNama.classList.remove('border-red-500', 'focus:ring-red-400');
+        inputNama.classList.add('border-slate-200', 'focus:ring-blue-400');
+        btnSimpan.disabled = false;
+        btnSimpan.classList.remove('opacity-50', 'cursor-not-allowed');
+        return;
+    }
+
+    // Cek apakah barang sudah ada di daftar stok Admin (adminDataStok) atau productMaster
+    const isExist = (typeof adminDataStok !== 'undefined' && adminDataStok.some(s => s.nama_barang.toUpperCase() === namaInput)) || 
+                    (typeof productMaster !== 'undefined' && productMaster.some(p => String(p.nama).toUpperCase() === namaInput));
+
+    if (isExist) {
+        // Barang ada: Tampilkan peringatan, ubah input jadi merah, dan disable tombol
+        warningText.classList.remove('hidden');
+        inputNama.classList.remove('border-slate-200', 'focus:ring-blue-400');
+        inputNama.classList.add('border-red-500', 'focus:ring-red-400');
+        
+        btnSimpan.disabled = true;
+        btnSimpan.classList.add('opacity-50', 'cursor-not-allowed');
+    } else {
+        // Barang tidak ada: Sembunyikan peringatan dan aktifkan tombol kembali
+        warningText.classList.add('hidden');
+        inputNama.classList.remove('border-red-500', 'focus:ring-red-400');
+        inputNama.classList.add('border-slate-200', 'focus:ring-blue-400');
+        
+        btnSimpan.disabled = false;
+        btnSimpan.classList.remove('opacity-50', 'cursor-not-allowed');
+    }
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons({ root: warningText.parentElement });
 };
 
 window.simpanBarangBaru = async function() {
@@ -1956,14 +2017,14 @@ window.simpanBarangBaru = async function() {
     });
 
     try {
-        // Asumsi tabel master/stok bernama 'stok_barang'. Sesuaikan nama tabel jika berbeda di Supabase Anda.
+        // PERBAIKAN 1: Mengubah nama tabel dari 'stok_barang' menjadi 'stok'
         const { error } = await supabaseClient
-            .from('stok_barang')
+            .from('stok')
             .insert([{
                 nama_barang: nama,
                 kategori: kategori,
                 harga_jual_umum: parseInt(hargaUmum) || 0,
-                stok: parseInt(stok) || 0
+                sisa_stok: parseInt(stok) || 0 // PERBAIKAN 2: Mengubah nama kolom dari 'stok' menjadi 'sisa_stok'
             }]);
 
         if (error) throw error;
@@ -1978,8 +2039,9 @@ window.simpanBarangBaru = async function() {
 
         closeModalTambahBarang();
         
-        // Panggil fungsi refresh stok jika Anda memilikinya di halaman administrator (Misalnya: loadDataStok())
-        // if (typeof loadDataStok === 'function') loadDataStok();
+        // PERBAIKAN 3: Memanggil fungsi untuk memuat ulang data stok agar UI langsung ter-update
+        if (typeof fetchStokAdmin === 'function') fetchStokAdmin();
+        if (typeof fetchMasterStock === 'function') fetchMasterStock();
         
     } catch (error) {
         console.error('Error saat menyimpan barang:', error.message);
@@ -1990,6 +2052,7 @@ window.simpanBarangBaru = async function() {
         });
     }
 };
+
 
 // Sesuaikan selectShop agar otomatis mengarah ke tab stok
 function selectShop(nama, alamat) {
