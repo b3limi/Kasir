@@ -305,7 +305,24 @@
     </div>
 
      <div class="space-y-4">
-      
+      <button onclick="selectShop('Muflih Print', 'Jl. Barawaja No. 19, Makassar')" 
+              class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95">
+        <div class="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">M</div>
+        <div class="text-left">
+          <p class="font-bold text-white group-hover:text-blue-400 transition">Muflih Print</p>
+          <p class="text-xs text-slate-400">Jl. Barawaja No. 19, Makassar</p>
+        </div>
+      </button>
+
+      <button onclick="selectShop('Vi Printing', 'Jl. Rappokalling Raya, Makassar')" 
+              class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95">
+        <div class="w-12 h-12 bg-purple-500 rounded-2xl flex items-center justify-center font-bold text-white text-xl">V</div>
+        <div class="text-left">
+          <p class="font-bold text-white group-hover:text-blue-400 transition">Vi Printing</p>
+          <p class="text-xs text-slate-400">Jl. Rappokalling Raya, Makassar</p>
+        </div>
+      </button>
+
       <!-- TAMBAHAN: Tombol BLIMI -->
       <button onclick="selectShop('BLIMI', 'Jl. Kumala No. 05, Makassar')" 
               class="w-full p-5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-3xl flex items-center gap-4 transition-all group active:scale-95 mt-2">
@@ -5636,10 +5653,6 @@ function changeTab(tab) {
             } else {
               document.body.classList.remove('mode-pintas-active');
             }
-            setTimeout(() => {
-                const inlineSearch = document.getElementById('inlineSearchPelanggan');
-                if (inlineSearch) inlineSearch.focus();
-            }, 150);
         }
         return; 
     }
@@ -5666,16 +5679,16 @@ function changeTab(tab) {
               ` : ''}
             </div>
             
-            <div id="section-pilih-pelanggan" class="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-              <label class="block text-gray-700 text-sm font-bold mb-1">Pilih / Cari Pelanggan</label>
-              <div class="relative">
+            <div id="section-pilih-pelanggan" class="flex flex-col h-[calc(100dvh-200px)] animate-in fade-in slide-in-from-bottom-2 duration-300">
+              <label class="block text-gray-700 text-sm font-bold mb-2 shrink-0">Pilih / Cari Pelanggan</label>
+              <div class="relative shrink-0 mb-3">
                 <i data-lucide="search" class="absolute left-3 top-3.5 w-4 h-4 text-slate-400"></i>
                 <input type="text" id="inlineSearchPelanggan" class="w-full border border-slate-200 bg-slate-50 rounded-xl p-3 pl-10 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium" placeholder="Ketik Pelanggan & Tekan Enter..." oninput="filterInlinePelanggan()" onkeyup="if(event.key === 'Enter') pilihPelangganInlineManual()">
               </div>
-              <div class="max-h-72 overflow-y-auto border border-slate-200 rounded-xl p-2 bg-white shadow-inner">
+              <div class="flex-1 min-h-0 overflow-y-auto border border-slate-200 rounded-xl p-2 bg-white shadow-inner">
                 <ul id="inlineListDaftarPelanggan" class="space-y-1"></ul>
               </div>
-              <button id="btn-inline-manual-pelanggan" onclick="pilihPelangganInlineManual()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hidden active:scale-95 transition-all">
+              <button id="btn-inline-manual-pelanggan" onclick="pilihPelangganInlineManual()" class="w-full mt-3 shrink-0 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg hidden active:scale-95 transition-all">
                 Gunakan "<span id="inline-manual-text"></span>"
               </button>
             </div>
@@ -5851,11 +5864,6 @@ function changeTab(tab) {
         } else {
             renderInlineListPelanggan(typeof dataPelangganGlobal !== 'undefined' ? dataPelangganGlobal : []);
         }
-
-        setTimeout(() => {
-            const inlineSearch = document.getElementById('inlineSearchPelanggan');
-            if(inlineSearch) inlineSearch.focus(); 
-        }, 150);
     }
     else if (tab === 'pembelian') {
       menuContainer.innerHTML = `
