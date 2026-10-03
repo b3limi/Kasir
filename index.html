@@ -4128,8 +4128,7 @@ if ((item.isRekap && item.isRekap !== false && item.isRekap !== "false" && item.
                 const subtotal = harga * qty;
                 const invoiceText = item.invoice || ''; 
                 
-                // Menambahkan item.isLocked ke dalam key agar item terkunci terpisah secara aman
-                const itemKey = `${namaBarang}_${harga}_${invoiceText}_${isSudah}_${item.isLocked}`;
+              const itemKey = `${namaBarang}_${harga}_${invoiceText}`;
 
                 if (!groupedData[customerKey].items[itemKey]) {
                     const newChkId = `chk-rekap-langsung-${chkIndex++}`;
