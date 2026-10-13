@@ -3531,6 +3531,12 @@ window.kirimRekapanKeSpreadsheet = async function() {
             if (typeof renderTransactions === 'function') renderTransactions(); 
             
             alert(`Berhasil! Data rekapan harian sukses dikirim ke Spreadsheet.`);
+            
+            // Tambahan: Buka tab baru jika URL tersedia dari respon server
+            if (result.url) {
+                window.open(result.url, '_blank');
+            }
+            
         } else {
             alert('Gagal mengirim: ' + result.message);
         }
