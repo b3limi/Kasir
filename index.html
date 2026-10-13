@@ -3462,7 +3462,6 @@ window.kirimRekapanKeSpreadsheet = async function() {
 
     if (typeof showLoading === 'function') showLoading(true);
     try {
-        // PERBAIKAN CORS: Menggunakan text/plain agar tidak memicu Preflight Block dari Google
         const response = await fetch(SCRIPT_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -3496,8 +3495,7 @@ window.kirimRekapanKeSpreadsheet = async function() {
                     if (Array.isArray(items)) {
                         items.forEach(item => {
                             if (!item.isLocked) {
-                                // Dikembalikan ke pengaturan awal sesuai instruksi
-                                item.isLocked = false; 
+                                item.isLocked = false;
                                 changed = false;
                             }
                         });
@@ -3528,15 +3526,11 @@ window.kirimRekapanKeSpreadsheet = async function() {
                 update.target.detail = update.isString ? JSON.stringify(update.newItems) : update.newItems;
             });
             
+           // 6. AUTO-COPY KE CLIPBOARD (DINONAKTIFKAN)
+            
             if (typeof renderTransactions === 'function') renderTransactions(); 
             
             alert(`Berhasil! Data rekapan harian sukses dikirim ke Spreadsheet.`);
-            
-            // Buka tab baru mengarah ke Google Sheets dari URL yang direturn backend
-            if (result.url) {
-                window.open(result.url, '_blank');
-            }
-            
         } else {
             alert('Gagal mengirim: ' + result.message);
         }
